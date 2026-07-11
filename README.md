@@ -3,6 +3,8 @@
 Plattformübergreifender Installationsassistent für gängige Freeware.  
 Erkennt automatisch das Betriebssystem und installiert fehlende Programme über den jeweiligen Paketmanager.
 
+Repo: [github.com/schaib903/install-assistant](https://github.com/schaib903/install-assistant) (privat)
+
 ---
 
 ## Dateien
@@ -34,6 +36,24 @@ Verwendung:
 ```
 
 > **Wichtig:** Das Verschieben der Benutzerordner ist ein Eingriff in echte Nutzerdaten. Vor dem eigentlichen Verschieben zeigt das Skript den vollständigen Plan (alter Pfad → neuer Pfad, benötigter Speicherplatz) und verlangt eine explizite Bestätigung.
+
+---
+
+## Bootstrap-Kit für einen neuen Rechner
+
+Auf einem frischen Windows ist noch kein Git installiert, daher kann man das Repo dort noch nicht klonen. Für genau diesen Fall gibt es den Ordner `bootstrap/` mit zwei Dateien, die zusammen auf den neuen Rechner mitgenommen werden (USB-Stick, Netzwerkfreigabe, Cloud-Speicher):
+
+| Datei | Zweck |
+|---|---|
+| `bootstrap/setup_assistent_windows.ps1` | Grundsetup ausführen (winget, Git, Claude Code CLI) |
+| `bootstrap/CLAUDE.md` | Wird automatisch gelesen, wenn `claude` in diesem Ordner gestartet wird, und weist Claude Code an, dieses Repo per `git clone` zu holen |
+
+**Ablauf auf dem neuen Rechner:**
+1. Beide Dateien aus `bootstrap/` in einen leeren Ordner kopieren
+2. `.\setup_assistent_windows.ps1` ausführen (installiert u.a. Git und Claude Code CLI)
+3. Im selben Ordner `claude` starten – liest automatisch die dortige `CLAUDE.md` und klont dieses Repo in einen neuen Unterordner
+
+> **Wartungshinweis:** `bootstrap/setup_assistent_windows.ps1` ist eine einfache Kopie der Datei im Hauptverzeichnis (kein Symlink, kein Build-Schritt). Bei Änderungen am Hauptskript die Kopie im `bootstrap/`-Ordner mit aktualisieren.
 
 ---
 

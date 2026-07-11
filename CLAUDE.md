@@ -11,8 +11,17 @@ Standalone, dependency-free installer/setup scripts, each a single self-containe
 | `install_assist_windows.ps1` | Windows 10/11 | Detects & installs a fixed catalog of freeware via winget |
 | `install_assist_linux.sh` | Debian / Ubuntu / Mint / Pop!_OS | Same catalog via apt |
 | `setup_assistent_windows.ps1` | Windows 10/11 | New-machine bootstrap: winget/Git/Claude Code CLI + moving Pictures/Downloads/Documents to another drive |
+| `bootstrap/` | Windows 10/11 | Standalone kit for a fresh machine: a copy of `setup_assistent_windows.ps1` + a bootstrap `CLAUDE.md` that clones this repo |
 
 `instructions_freeware_installation_assist.md` is the original German spec the two `install_assist_*` scripts were generated from; treat it as the source of truth for their intended behavior if the scripts and docs ever disagree. `setup_assistent_windows.ps1` is a separate concern (initial machine setup, not freeware installation) and has no corresponding spec file — its behavior is defined by the script itself and by `README.md`.
+
+This repo lives at `https://github.com/schaib903/install-assistant` (private).
+
+### The `bootstrap/` folder is a special case — read before touching it
+
+`bootstrap/CLAUDE.md` is **not** this file. It's a separate, minimal `CLAUDE.md` meant to be copied (together with `bootstrap/setup_assistent_windows.ps1`) onto a brand-new Windows machine that has neither Git nor this repo yet. When a user starts `claude` inside that bootstrap folder, Claude Code reads *that* file instead of this one, and its only job is to `git clone` this repo. Do not merge the two files or delete `bootstrap/CLAUDE.md` thinking it's a duplicate — it is intentionally separate because a directory can only have one auto-loaded `CLAUDE.md`, and this repo's root and the bootstrap kit are different directories with different jobs.
+
+`bootstrap/setup_assistent_windows.ps1` is a **plain copy** of the root script, not a symlink or generated artifact (there's no build step in this repo to regenerate it). When you change `setup_assistent_windows.ps1` at the repo root, copy the change into `bootstrap/setup_assistent_windows.ps1` too, or the bootstrap kit silently goes stale.
 
 ## Running / testing changes
 
