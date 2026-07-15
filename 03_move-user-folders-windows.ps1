@@ -1,6 +1,9 @@
 #Requires -Version 5.1
 # Move User Folders - Windows
-# Moves Pictures/Downloads/Documents to another partition.
+# Moves the official Windows user folders (Desktop, Documents, Downloads,
+# Pictures, Music, Videos, Favorites) to another partition. OneDrive, Saved
+# Games, Searches, Contacts, and Links are intentionally not included - they
+# aren't redirectable via the same User Shell Folders registry mechanism.
 # Standalone script, separate from the bootstrap (00_setup-windows.ps1).
 
 $ProgressPreference    = "SilentlyContinue"
@@ -48,7 +51,7 @@ Write-Host "  +------------------------------------------------------------+" -F
 Write-Host "  |      Move User Folders  -  Windows                         |" -ForegroundColor Cyan
 Write-Host "  +------------------------------------------------------------+" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  Note: moves real user data (Pictures/Downloads/Documents)." -ForegroundColor DarkGray
+Write-Host "  Note: moves real user data (Desktop/Documents/Downloads/Pictures/Music/Videos/Favorites)." -ForegroundColor DarkGray
 
 # ─── Drive overview ──────────────────────────────────────────────────────────
 
@@ -71,13 +74,17 @@ Abschnitt "Move User Folders"
 Write-Host ""
 
 $OrdnerDefinitionen = @(
-    @{ Label = "Pictures";  ShellName = "My Pictures"; RegName = "My Pictures" }
-    @{ Label = "Downloads"; ShellName = "Downloads";   RegName = "{374DE290-123F-4565-9164-39C4925E467B}" }
-    @{ Label = "Documents"; ShellName = "Personal";     RegName = "Personal" }
+    @{ Label = "Desktop";   ShellName = "Desktop";     RegName = "Desktop";     StandardName = "Desktop" }
+    @{ Label = "Documents"; ShellName = "Personal";     RegName = "Personal";    StandardName = "Documents" }
+    @{ Label = "Downloads"; ShellName = "Downloads";   RegName = "{374DE290-123F-4565-9164-39C4925E467B}"; StandardName = "Downloads" }
+    @{ Label = "Pictures";  ShellName = "My Pictures"; RegName = "My Pictures"; StandardName = "Pictures" }
+    @{ Label = "Music";     ShellName = "My Music";     RegName = "My Music";    StandardName = "Music" }
+    @{ Label = "Videos";    ShellName = "My Video";     RegName = "My Video";    StandardName = "Videos" }
+    @{ Label = "Favorites"; ShellName = "Favorites";   RegName = "Favorites";   StandardName = "Favorites" }
 )
 
 $OrdnerPlan = [System.Collections.ArrayList]::new()
-$antwortOrdner = Read-Host "  Move Pictures, Downloads and Documents to another partition? (Y/N)"
+$antwortOrdner = Read-Host "  Move your Windows user folders (Desktop, Documents, Downloads, Pictures, Music, Videos, Favorites) to another partition? (Y/N)"
 
 if ($antwortOrdner -match "^[yY]$") {
     Write-Host ""
@@ -118,6 +125,19 @@ if ($antwortOrdner -match "^[yY]$") {
                     Write-Host "       Recommendation: disable OneDrive folder backup first." -ForegroundColor Yellow
                     $weiterOneDrive = Read-Host "  Move '$($def.Label)' anyway? (y/N)"
                     if ($weiterOneDrive -notmatch "^[yY]$") {
+                        Write-Host "  Skipping $($def.Label)." -ForegroundColor DarkGray
+                        Write-Host ""
+                        continue
+                    }
+                    Write-Host ""
+                } elseif ($alterPfad -ne (Join-Path $env:USERPROFILE $def.StandardName)) {
+                    # Folder already lives somewhere other than the default
+                    # %USERPROFILE%\<Name> location (previously redirected,
+                    # migrated, symlinked, etc.) - flag it before moving again.
+                    Write-Host "  [!!] $($def.Label) is not at its standard location:" -ForegroundColor Yellow
+                    Write-Host "       $alterPfad" -ForegroundColor Yellow
+                    $weiterNichtStandard = Read-Host "  Move '$($def.Label)' anyway? (y/N)"
+                    if ($weiterNichtStandard -notmatch "^[yY]$") {
                         Write-Host "  Skipping $($def.Label)." -ForegroundColor DarkGray
                         Write-Host ""
                         continue

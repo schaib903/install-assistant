@@ -60,7 +60,9 @@ At the end of a manual run, the script asks (if not already set up) whether it s
 
 ## Moving User Folders
 
-`03_move-user-folders-windows.ps1` is a standalone script for moving Pictures, Downloads, and Documents to another partition – separate from the bootstrap set, since it touches real user data and can be needed/run independently of it. It first shows the available drives with free space, checks whether there's enough space at the target, and warns if a folder is currently backed up via OneDrive (which could otherwise conflict with its synchronization).
+`03_move-user-folders-windows.ps1` is a standalone script for moving your Windows user folders – Desktop, Documents, Downloads, Pictures, Music, Videos, and Favorites – to another partition. OneDrive, Saved Games, Searches, Contacts, and Links are intentionally excluded (see the note below). Separate from the bootstrap set, since it touches real user data and can be needed/run independently of it. It first shows the available drives with free space, checks whether there's enough space at the target, and warns (with a per-folder yes/no prompt) if a folder is currently backed up via OneDrive or isn't at its standard location (e.g. it was already redirected or migrated before).
+
+> **Note on folder scope:** OneDrive, Saved Games, Searches, Contacts, and Links aren't included. OneDrive is excluded because moving it can conflict with OneDrive's own synchronization; the other four simply aren't relocatable via the same mechanism this script uses (a standard Windows profile has no registry entry for them to redirect).
 
 Usage:
 ```powershell
