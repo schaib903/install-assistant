@@ -3,7 +3,7 @@
 Plattformübergreifender Installationsassistent für gängige Freeware.  
 Erkennt automatisch das Betriebssystem und installiert fehlende Programme über den jeweiligen Paketmanager.
 
-Repo: [github.com/schaib903/install-assistant](https://github.com/schaib903/install-assistant) (privat)
+Repo: [github.com/schaib903/install-assistant](https://github.com/schaib903/install-assistant) (öffentlich)
 
 ---
 
@@ -22,15 +22,19 @@ Repo: [github.com/schaib903/install-assistant](https://github.com/schaib903/inst
 
 `setup_assistent_windows.ps1` ist ein eigenständiges Skript für die Ersteinrichtung eines neuen Windows-Rechners – unabhängig vom Freeware-Installer. Es prüft und installiert bei Bedarf das **Grundsetup**:
 - **winget** (Windows Package Manager) – wird, falls nicht vorhanden, automatisch registriert bzw. von GitHub nachinstalliert
-- **Git**
-- **Claude Code CLI** (offizieller nativer Installer, `irm https://claude.ai/install.ps1 | iex`)
+- **Git** (via winget)
+- **GitHub CLI** (`gh`, via winget) – wird für die Anmeldung bei GitHub und das Klonen des Repos benötigt
+- **install-assistant Repo** – meldet sich per `gh auth login` bei GitHub an (falls noch nicht angemeldet), ermittelt den Besitzernamen dynamisch (`gh api user`) und klont dieses Repo per `gh repo clone` in einen Unterordner neben dem Skript
+- **Claude Code CLI** (via winget)
 
-Diese drei Komponenten ermöglichen den Zugriff auf/Download von Repositories. Wie beim Freeware-Installer wird zuerst geprüft, was bereits installiert ist – nur die fehlenden Komponenten werden zur Auswahl angeboten (einzeln, "alle" oder "keine").
+Diese Komponenten ermöglichen den Zugriff auf/Download von Repositories. Wie beim Freeware-Installer wird zuerst geprüft, was bereits installiert ist – nur die fehlenden Komponenten werden zur Auswahl angeboten (einzeln, "alle" oder "keine").
 
 Verwendung:
 ```powershell
 .\setup_assistent_windows.ps1
 ```
+
+> **Hinweis:** Falls PowerShell die Ausführung mit einem Fehler zur Ausführungsrichtlinie verweigert, siehe [Ausführungsrichtlinie](#voraussetzungen) unter Voraussetzungen.
 
 ## Benutzerordner verschieben
 
@@ -43,6 +47,8 @@ Verwendung:
 
 > **Wichtig:** Das Verschieben der Benutzerordner ist ein Eingriff in echte Nutzerdaten. Vor dem eigentlichen Verschieben zeigt das Skript den vollständigen Plan (alter Pfad → neuer Pfad, benötigter Speicherplatz) und verlangt eine explizite Bestätigung.
 
+> **Hinweis:** Falls PowerShell die Ausführung mit einem Fehler zur Ausführungsrichtlinie verweigert, siehe [Ausführungsrichtlinie](#voraussetzungen) unter Voraussetzungen.
+
 ---
 
 ## Bootstrap-Kit für einen neuen Rechner
@@ -51,13 +57,13 @@ Auf einem frischen Windows ist noch kein Git installiert, daher kann man das Rep
 
 | Datei | Zweck |
 |---|---|
-| `bootstrap/setup_assistent_windows.ps1` | Grundsetup ausführen (winget, Git, Claude Code CLI) |
+| `bootstrap/setup_assistent_windows.ps1` | Grundsetup ausführen (winget, Git, GitHub CLI, Repo-Klon, Claude Code CLI) |
 | `bootstrap/CLAUDE.md` | Wird automatisch gelesen, wenn `claude` in diesem Ordner gestartet wird, und weist Claude Code an, dieses Repo per `git clone` zu holen |
 
 **Ablauf auf dem neuen Rechner:**
 1. Beide Dateien aus `bootstrap/` in einen leeren Ordner kopieren
-2. `.\setup_assistent_windows.ps1` ausführen (installiert u.a. Git und Claude Code CLI)
-3. Im selben Ordner `claude` starten – liest automatisch die dortige `CLAUDE.md` und klont dieses Repo in einen neuen Unterordner
+2. `.\setup_assistent_windows.ps1` ausführen (installiert u.a. winget, Git, GitHub CLI, Claude Code CLI und klont dieses Repo) – auf einem frischen Windows ist die PowerShell-Ausführungsrichtlinie meist noch nicht freigeschaltet, siehe [Ausführungsrichtlinie](#voraussetzungen) unter Voraussetzungen
+3. Im selben Ordner `claude` starten – liest automatisch die dortige `CLAUDE.md` und klont dieses Repo in einen neuen Unterordner (falls Schritt 2 das Repo noch nicht bereits geklont hat)
 
 > **Wartungshinweis:** `bootstrap/setup_assistent_windows.ps1` ist eine einfache Kopie der Datei im Hauptverzeichnis (kein Symlink, kein Build-Schritt). Bei Änderungen am Hauptskript die Kopie im `bootstrap/`-Ordner mit aktualisieren.
 

@@ -1,11 +1,14 @@
 #Requires -Version 5.1
 # Setup-Assistent - Windows Grundsetup
-# Grundsetup: winget, Git, Claude Code CLI (fuer Repo-Zugriff/Download)
-# Verschiebung von Benutzerordnern (Bilder/Downloads/Dokumente) ist ein eigenes
-# Skript: verschiebe_benutzerordner_windows.ps1
+# Grundsetup: winget, Git, GitHub CLI (Anmeldung + Klonen von install-assistant),
+# Claude Code CLI. Verschiebung von Benutzerordnern (Bilder/Downloads/Dokumente)
+# ist ein eigenes Skript: verschiebe_benutzerordner_windows.ps1
 
 $ProgressPreference    = "SilentlyContinue"
 $ErrorActionPreference = "Continue"
+
+$GitHubRepoName  = "install-assistant"
+$OkCodes         = @(0, -1978335189, -1978335106, 3010)
 
 # ─── Hilfsfunktionen ────────────────────────────────────────────────────────
 
@@ -27,8 +30,12 @@ function Pruefe-Winget([string]$ID) {
 }
 
 function Winget-Installiere([string]$ID) {
-    winget install --id $ID --exact --silent `
-        --accept-package-agreements --accept-source-agreements 2>&1 | Out-Null
+    $ausgabe = winget install --id $ID --exact --silent `
+        --accept-package-agreements --accept-source-agreements 2>&1
+    if ($OkCodes -notcontains $LASTEXITCODE) {
+        Write-Host "  winget-Ausgabe:" -ForegroundColor DarkGray
+        $ausgabe | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
+    }
     return $LASTEXITCODE
 }
 
@@ -74,16 +81,30 @@ function Installiere-Winget {
     return $false
 }
 
-function Installiere-Claude {
-    Write-Host "  Fuehre aus: irm https://claude.ai/install.ps1 | iex" -ForegroundColor DarkGray
-    try {
-        Invoke-Expression (Invoke-RestMethod -Uri "https://claude.ai/install.ps1" -UseBasicParsing)
-    } catch {
-        Write-Host "  [!!] Claude Code Installation fehlgeschlagen: $($_.Exception.Message)" -ForegroundColor Red
+function Hole-Repo([string]$ZielVerzeichnis) {
+    if (Test-Path $ZielVerzeichnis) {
+        Write-Host "  [OK] Repo-Ordner existiert bereits: $ZielVerzeichnis" -ForegroundColor Green
+        return $true
+    }
+
+    gh auth status *> $null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  GitHub-Anmeldung erforderlich - folge den Anweisungen im Terminal/Browser ..." -ForegroundColor Cyan
+        gh auth login
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "  [!!] GitHub-Anmeldung fehlgeschlagen oder abgebrochen" -ForegroundColor Red
+            return $false
+        }
+    }
+
+    $besitzer = gh api user --jq ".login" 2>&1
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($besitzer)) {
+        Write-Host "  [!!] GitHub-Benutzername konnte nicht ermittelt werden" -ForegroundColor Red
         return $false
     }
-    Aktualisiere-Path
-    return [bool](Get-Command claude -ErrorAction SilentlyContinue)
+
+    gh repo clone "$besitzer/$GitHubRepoName" $ZielVerzeichnis
+    return ($LASTEXITCODE -eq 0)
 }
 
 # ─── Voraussetzungen ────────────────────────────────────────────────────────
@@ -125,9 +146,11 @@ Abschnitt "Grundsetup-Status"
 Write-Host ""
 
 $GrundsetupKandidaten = @(
-    @{ Name = "winget (Windows Package Manager)"; Key = "winget" }
-    @{ Name = "Git";                              Key = "git" }
-    @{ Name = "Claude Code CLI";                  Key = "claude" }
+    @{ Name = "winget (Windows Package Manager)";           Key = "winget" }
+    @{ Name = "Git";                                        Key = "git" }
+    @{ Name = "GitHub CLI (gh)";                            Key = "gh" }
+    @{ Name = "install-assistant Repo (Anmeldung + Klonen)"; Key = "repo" }
+    @{ Name = "Claude Code CLI";                            Key = "claude" }
 )
 
 $GrundsetupFehlend = [System.Collections.ArrayList]::new()
@@ -145,7 +168,18 @@ foreach ($k in $GrundsetupKandidaten) {
             )) -or
             ((Get-Command winget -ErrorAction SilentlyContinue) -and (Pruefe-Winget "Git.Git"))
         }
-        "claude" { [bool](Get-Command claude -ErrorAction SilentlyContinue) }
+        "gh"     {
+            [bool](Get-Command gh -ErrorAction SilentlyContinue) -or
+            ((Get-Command winget -ErrorAction SilentlyContinue) -and (Pruefe-Winget "GitHub.cli"))
+        }
+        "repo"   {
+            (Test-Path (Join-Path $PSScriptRoot "install_assist_windows.ps1")) -or
+            (Test-Path (Join-Path $PSScriptRoot $GitHubRepoName))
+        }
+        "claude" {
+            [bool](Get-Command claude -ErrorAction SilentlyContinue) -or
+            ((Get-Command winget -ErrorAction SilentlyContinue) -and (Pruefe-Winget "Anthropic.ClaudeCode"))
+        }
     }
 
     if ($ok) {
@@ -240,7 +274,6 @@ Write-Host ""
 
 $Erfolg  = [System.Collections.ArrayList]::new()
 $Fehler  = [System.Collections.ArrayList]::new()
-$OkCodes = @(0, -1978335189, -1978335106, 3010)
 
 if ($AusgewaehlteKeys -contains "winget") {
     Write-Host "  Installiere winget ..." -ForegroundColor Cyan
@@ -273,14 +306,58 @@ if ($AusgewaehlteKeys -contains "git") {
     Write-Host ""
 }
 
+if ($AusgewaehlteKeys -contains "gh") {
+    Write-Host "  Installiere GitHub CLI ..." -ForegroundColor Cyan
+    if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+        Write-Host "  [!!] GitHub CLI fehlgeschlagen: winget nicht verfuegbar" -ForegroundColor Red
+        [void]$Fehler.Add("GitHub CLI")
+    } else {
+        $code = Winget-Installiere "GitHub.cli"
+        if ($OkCodes -contains $code) {
+            Write-Host "  [OK] GitHub CLI erfolgreich installiert" -ForegroundColor Green
+            [void]$Erfolg.Add("GitHub CLI")
+            Aktualisiere-Path
+        } else {
+            Write-Host "  [!!] GitHub CLI fehlgeschlagen  (Code: $code)" -ForegroundColor Red
+            [void]$Fehler.Add("GitHub CLI")
+        }
+    }
+    Write-Host ""
+}
+
+if ($AusgewaehlteKeys -contains "repo") {
+    Write-Host "  Melde bei GitHub an und klone install-assistant ..." -ForegroundColor Cyan
+    if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
+        Write-Host "  [!!] Repo-Klon fehlgeschlagen: gh (GitHub CLI) nicht verfuegbar" -ForegroundColor Red
+        [void]$Fehler.Add("install-assistant Repo")
+    } else {
+        $ziel = Join-Path $PSScriptRoot $GitHubRepoName
+        if (Hole-Repo $ziel) {
+            Write-Host "  [OK] Repo verfuegbar unter $ziel" -ForegroundColor Green
+            [void]$Erfolg.Add("install-assistant Repo")
+        } else {
+            Write-Host "  [!!] Repo-Klon fehlgeschlagen" -ForegroundColor Red
+            [void]$Fehler.Add("install-assistant Repo")
+        }
+    }
+    Write-Host ""
+}
+
 if ($AusgewaehlteKeys -contains "claude") {
     Write-Host "  Installiere Claude Code CLI ..." -ForegroundColor Cyan
-    if (Installiere-Claude) {
-        Write-Host "  [OK] Claude Code CLI erfolgreich installiert" -ForegroundColor Green
-        [void]$Erfolg.Add("Claude Code CLI")
-    } else {
-        Write-Host "  [!!] Claude Code CLI fehlgeschlagen" -ForegroundColor Red
+    if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+        Write-Host "  [!!] Claude Code CLI fehlgeschlagen: winget nicht verfuegbar" -ForegroundColor Red
         [void]$Fehler.Add("Claude Code CLI")
+    } else {
+        $code = Winget-Installiere "Anthropic.ClaudeCode"
+        if ($OkCodes -contains $code) {
+            Write-Host "  [OK] Claude Code CLI erfolgreich installiert" -ForegroundColor Green
+            [void]$Erfolg.Add("Claude Code CLI")
+            Aktualisiere-Path
+        } else {
+            Write-Host "  [!!] Claude Code CLI fehlgeschlagen  (Code: $code)" -ForegroundColor Red
+            [void]$Fehler.Add("Claude Code CLI")
+        }
     }
     Write-Host ""
 }
