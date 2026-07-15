@@ -1,6 +1,6 @@
 #Requires -Version 5.1
 # Program Update - Windows
-# Updates only the catalog programs from install-windows.ps1 (via winget
+# Updates only the catalog programs from 01_install-windows.ps1 (via winget
 # upgrade), not every winget package installed on the machine.
 # Can be run manually or register itself as a weekly task in the Windows
 # Task Scheduler (-Register), which then runs unattended via -Silent.
@@ -109,11 +109,11 @@ if (-not $Silent) {
     Write-Host "  |      Program Update  -  Windows                            |" -ForegroundColor Cyan
     Write-Host "  +------------------------------------------------------------+" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "  Updates only the catalog programs from install-windows.ps1," -ForegroundColor DarkGray
+    Write-Host "  Updates only the catalog programs from 01_install-windows.ps1," -ForegroundColor DarkGray
     Write-Host "  not every winget package on this machine." -ForegroundColor DarkGray
 }
 
-# ─── Catalog (must be kept in sync with install-windows.ps1) ───────────────
+# ─── Catalog (must be kept in sync with 01_install-windows.ps1) ───────────────
 
 $Programme = @(
     @{ Name = "Firefox";              ID = "Mozilla.Firefox" }
@@ -206,14 +206,14 @@ if (-not $Silent) {
     if (Get-ScheduledTask -TaskName $AufgabenName -ErrorAction SilentlyContinue) {
         Write-Host ""
         Write-Host "  Note: weekly automatic execution is already set up." -ForegroundColor DarkGray
-        Write-Host "        Remove it with: .\update-windows.ps1 -Unregister" -ForegroundColor DarkGray
+        Write-Host "        Remove it with: .\02_update-windows.ps1 -Unregister" -ForegroundColor DarkGray
     } else {
         Write-Host ""
         $antwort = Read-Host "  Run this update automatically every week from now on? (Y/N)"
         if ($antwort -match "^[yY]$") {
             if (Registriere-Aufgabe) {
                 Write-Host "  [OK] Weekly task set up (every Monday, 9:00 AM)." -ForegroundColor Green
-                Write-Host "       Remove it with: .\update-windows.ps1 -Unregister" -ForegroundColor DarkGray
+                Write-Host "       Remove it with: .\02_update-windows.ps1 -Unregister" -ForegroundColor DarkGray
             }
         }
     }

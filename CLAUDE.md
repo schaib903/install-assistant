@@ -8,44 +8,44 @@ Standalone, dependency-free installer/setup scripts, each a single self-containe
 
 | File | Platform | Purpose |
 |---|---|---|
-| `install-windows.ps1` | Windows 10/11 | Detects & installs a fixed catalog of freeware via winget |
-| `install-linux.sh` | Debian / Ubuntu / Mint / Pop!_OS | Same catalog via apt |
-| `setup-windows.ps1` | Windows 10/11 | New-machine bootstrap: winget/Git/GitHub CLI/repo clone/Claude Code CLI |
-| `update-windows.ps1` | Windows 10/11 | Standalone: runs `winget upgrade` for the catalog programs from `install-windows.ps1`; can self-register as a weekly Scheduled Task |
-| `move-user-folders-windows.ps1` | Windows 10/11 | Standalone: moves Pictures/Downloads/Documents to another drive |
-| `bootstrap/` | Windows 10/11 | Standalone kit for a fresh machine: a copy of `setup-windows.ps1` + a bootstrap `CLAUDE.md` that clones this repo |
+| `01_install-windows.ps1` | Windows 10/11 | Detects & installs a fixed catalog of freeware via winget |
+| `01_install-linux.sh` | Debian / Ubuntu / Mint / Pop!_OS | Same catalog via apt |
+| `00_setup-windows.ps1` | Windows 10/11 | New-machine bootstrap: winget/Git/GitHub CLI/repo clone/Claude Code CLI |
+| `02_update-windows.ps1` | Windows 10/11 | Standalone: runs `winget upgrade` for the catalog programs from `01_install-windows.ps1`; can self-register as a weekly Scheduled Task |
+| `03_move-user-folders-windows.ps1` | Windows 10/11 | Standalone: moves Pictures/Downloads/Documents to another drive |
+| `bootstrap/` | Windows 10/11 | Standalone kit for a fresh machine: a copy of `00_setup-windows.ps1` + a bootstrap `CLAUDE.md` that clones this repo |
 
-`freeware-install-spec.md` is the original spec (originally written in German, translated to English — see git history for the original German text) the two `install-*` scripts were generated from; treat it as the source of truth for their intended behavior if the scripts and docs ever disagree. `setup-windows.ps1`, `update-windows.ps1`, and `move-user-folders-windows.ps1` are a separate concern (initial machine setup / update maintenance / data relocation, not freeware installation) and have no corresponding spec file — their behavior is defined by the scripts themselves and by `README.md`.
+`freeware-install-spec.md` is the original spec (originally written in German, translated to English — see git history for the original German text) the two `install-*` scripts were generated from; treat it as the source of truth for their intended behavior if the scripts and docs ever disagree. `00_setup-windows.ps1`, `02_update-windows.ps1`, and `03_move-user-folders-windows.ps1` are a separate concern (initial machine setup / update maintenance / data relocation, not freeware installation) and have no corresponding spec file — their behavior is defined by the scripts themselves and by `README.md`.
 
 This repo lives at `https://github.com/schaib903/install-assistant` (public).
 
 ### The `bootstrap/` folder is a special case — read before touching it
 
-`bootstrap/CLAUDE.md` is **not** this file. It's a separate, minimal `CLAUDE.md` meant to be copied (together with `bootstrap/setup-windows.ps1`) onto a brand-new Windows machine that has neither Git nor this repo yet. When a user starts `claude` inside that bootstrap folder, Claude Code reads *that* file instead of this one, and its only job is to `git clone` this repo. Do not merge the two files or delete `bootstrap/CLAUDE.md` thinking it's a duplicate — it is intentionally separate because a directory can only have one auto-loaded `CLAUDE.md`, and this repo's root and the bootstrap kit are different directories with different jobs.
+`bootstrap/CLAUDE.md` is **not** this file. It's a separate, minimal `CLAUDE.md` meant to be copied (together with `bootstrap/00_setup-windows.ps1`) onto a brand-new Windows machine that has neither Git nor this repo yet. When a user starts `claude` inside that bootstrap folder, Claude Code reads *that* file instead of this one, and its only job is to `git clone` this repo. Do not merge the two files or delete `bootstrap/CLAUDE.md` thinking it's a duplicate — it is intentionally separate because a directory can only have one auto-loaded `CLAUDE.md`, and this repo's root and the bootstrap kit are different directories with different jobs.
 
-`bootstrap/setup-windows.ps1` is a **plain copy** of the root script, not a symlink or generated artifact (there's no build step in this repo to regenerate it). When you change `setup-windows.ps1` at the repo root, copy the change into `bootstrap/setup-windows.ps1` too, or the bootstrap kit silently goes stale.
+`bootstrap/00_setup-windows.ps1` is a **plain copy** of the root script, not a symlink or generated artifact (there's no build step in this repo to regenerate it). When you change `00_setup-windows.ps1` at the repo root, copy the change into `bootstrap/00_setup-windows.ps1` too, or the bootstrap kit silently goes stale.
 
 ## Running / testing changes
 
 There is no automated test harness. Verify changes by executing the script directly:
 
 ```powershell
-.\install-windows.ps1
+.\01_install-windows.ps1
 ```
 
 ```bash
-chmod +x install-linux.sh
-./install-linux.sh
+chmod +x 01_install-linux.sh
+./01_install-linux.sh
 ```
 
 If a `.sh` file was edited or created on Windows, it will have CRLF line endings and fail on Linux with `bad interpreter`. Convert before testing/committing:
 ```bash
-sed -i 's/\r//' install-linux.sh
+sed -i 's/\r//' 01_install-linux.sh
 ```
 
 Both scripts are interactive (they prompt with `Y/N` and a Python-version number choice) and mutate real system state (they install software via winget/apt), so a dry run or careful narration of what would happen is preferable to blindly executing them in an agent context. If a `--dry-run` flag has been added (see prompt catalog below), prefer testing with that.
 
-`move-user-folders-windows.ps1` is higher-stakes to test than the other scripts: it moves real user data (Pictures/Downloads/Documents) via `robocopy /MOVE`, which deletes the source after copying. Always verify changes with declined answers first (`N` at every prompt) before ever answering `Y` to the folder-move question on a real machine — a syntax check (`[System.Management.Automation.Language.Parser]::ParseFile(...)`) plus a declined-answers dry run is the safe verification loop; there is no safe way to test the actual move without touching real files.
+`03_move-user-folders-windows.ps1` is higher-stakes to test than the other scripts: it moves real user data (Pictures/Downloads/Documents) via `robocopy /MOVE`, which deletes the source after copying. Always verify changes with declined answers first (`N` at every prompt) before ever answering `Y` to the folder-move question on a real machine — a syntax check (`[System.Management.Automation.Language.Parser]::ParseFile(...)`) plus a declined-answers dry run is the safe verification loop; there is no safe way to test the actual move without touching real files.
 
 ## Architecture — both scripts share one linear flow
 
@@ -80,16 +80,16 @@ Update both scripts' program tables in lockstep (unless the program is genuinely
 
 New catalog entries automatically get picked up by the selection-prompt and install-loop logic in both scripts — no separate wiring needed beyond the table/arrays and, if required, a bespoke install function referenced from the `case`/`switch` dispatch.
 
-**Also update `update-windows.ps1`'s `$Programme` array** (Name + winget `ID` only, no `Pfade` needed there — see its architecture section below for why). It's a third copy of the same catalog kept in lockstep by hand, same as the Windows/Linux pair above; nothing wires it automatically.
+**Also update `02_update-windows.ps1`'s `$Programme` array** (Name + winget `ID` only, no `Pfade` needed there — see its architecture section below for why). It's a third copy of the same catalog kept in lockstep by hand, same as the Windows/Linux pair above; nothing wires it automatically.
 
 `README.md` has a full catalog of ready-to-paste example prompts (add/remove programs, update Python versions, add logging, add `--dry-run`, add an uninstall script, adjust language, etc.) under "Updating with Claude Code" — check there before designing a new feature from scratch, since the maintainer already has a preferred approach for several common requests.
 
-## Architecture — `setup-windows.ps1`
+## Architecture — `00_setup-windows.ps1`
 
 A separate flow from the freeware installers, built the same way (status check → selection → single confirmation → execution → report), but for a different job: turning a fresh Windows install into one that can clone/use this repo. Folder relocation is a separate script, see below.
 
 1. **System info** — hostname/OS/RAM/CPU.
-2. **Bootstrap status check** — winget, Git, GitHub CLI (`gh`), the install-assistant repo itself, and Claude Code CLI, each checked via `Get-Command` (plus path/winget-list fallbacks, matching the freeware script's convention). The repo item's check is special: it's considered "present" either if the script is already running from inside the full repo (a sibling `install-windows.ps1` exists next to it) or if an `install-assistant` folder already sits next to the script — so it never re-offers a clone once one exists.
+2. **Bootstrap status check** — winget, Git, GitHub CLI (`gh`), the install-assistant repo itself, and Claude Code CLI, each checked via `Get-Command` (plus path/winget-list fallbacks, matching the freeware script's convention). The repo item's check is special: it's considered "present" either if the script is already running from inside the full repo (a sibling `01_install-windows.ps1` exists next to it) or if an `install-assistant` folder already sits next to the script — so it never re-offers a clone once one exists.
 3. **Bootstrap selection** — identical numbered-choice UX as the freeware script's program selection (comma list / `all` / `none`), scoped to whichever of the five are missing.
 4. **Overview + single confirmation** — same pattern as the freeware script: show everything planned, one Y/N gate before anything executes.
 5. **Execution** — runs in a fixed dependency order (winget → Git → GitHub CLI → repo clone → Claude), not selection order, since each step depends on the previous one being available (Git/GitHub CLI/Claude all install via winget; the repo clone needs `gh` on PATH and shells out to `gh auth login` interactively before `gh repo clone` if not already authenticated); `$env:Path` is refreshed from the registry after each install attempt since a new process/App Execution Alias registration won't otherwise be visible in the running session.
@@ -101,9 +101,9 @@ Notable implementation choices, in case they need revisiting:
 - **Repo clone** (`Hole-Repo` function) installs `gh`, runs `gh auth login` (interactive; opens a browser/device-code flow, cannot be made silent) if not already authenticated, then resolves the owner dynamically via `gh api user --jq ".login"` before `gh repo clone <owner>/install-assistant` — the owner is intentionally **not** hardcoded in the script, so the maintainer's GitHub username isn't baked into automation code. (The repo itself is public now, so this deliberately doesn't rely on that: it works the same regardless of visibility, and still requires an authenticated `gh` since it needs the login to determine the owner.) Clone target is always `<script-folder>\install-assistant`, mirroring what a human manually following `bootstrap/CLAUDE.md`'s `git clone` instruction would produce — so the automated path and the Claude-driven bootstrap fallback land in the same place. Note `bootstrap/CLAUDE.md` itself still has to hardcode the full clone URL (owner included), since at that point in the flow nothing is authenticated yet and Claude needs a literal URL to run `git clone` against.
 - The script does **not** hard-require Administrator — Appx registration and `HKCU` registry edits are per-user, and winget/its installers prompt for elevation themselves when a specific package needs it.
 
-## Architecture — `update-windows.ps1`
+## Architecture — `02_update-windows.ps1`
 
-A separate flow, standalone (no dependency on the bootstrap having run), for a different job than either freeware installer or bootstrap: keeping the already-installed catalog programs from `install-windows.ps1` current via `winget upgrade`. It deliberately does **not** run `winget upgrade --all` — that would touch every winget-tracked package on the machine, not just this repo's catalog.
+A separate flow, standalone (no dependency on the bootstrap having run), for a different job than either freeware installer or bootstrap: keeping the already-installed catalog programs from `01_install-windows.ps1` current via `winget upgrade`. It deliberately does **not** run `winget upgrade --all` — that would touch every winget-tracked package on the machine, not just this repo's catalog.
 
 1. **Catalog loop** — for each catalog entry, `winget upgrade --id <ID> --exact --silent ...` is called unconditionally (no separate installed-check via `Pfade`/`Pruefe-Winget` first, unlike the install scripts) — winget's own exit code distinguishes the three outcomes cleanly, so a separate pre-check would be redundant:
    - `0` → upgraded.
@@ -115,7 +115,7 @@ A separate flow, standalone (no dependency on the bootstrap having run), for a d
 3. **Weekly self-registration** — after a manual run, if no Scheduled Task named `"install-assistant - Weekly Program Update"` exists yet, it asks once (Y/N) whether to register one; `-Register` does the same non-interactively, `-Unregister` unregisters it. The registered task calls the same script file (`$PSCommandPath`) with `-Silent`, which suppresses the `Read-Host` calls (final pause + the registration question itself) so the unattended run never blocks on missing input. Unlike the internal function/variable names, these parameter names are part of the script's CLI interface (something a user actually types), so they were translated to English along with the rest of the visible surface.
 4. **`-RunLevel Highest`** on the scheduled task's principal — several catalog installers (e.g. Git) install at machine scope and need elevation; without `Highest`, a silent unattended upgrade for those would fail outright since there's no user to click a UAC prompt. This does mean `-Register` (and the interactive registration question) needs an elevated PowerShell session to succeed — `Registriere-Aufgabe` catches the resulting `Register-ScheduledTask` failure and tells the user to re-run as Administrator rather than surfacing a raw exception.
 
-## Architecture — `move-user-folders-windows.ps1`
+## Architecture — `03_move-user-folders-windows.ps1`
 
 A separate flow from the bootstrap script, standalone (no dependency on the bootstrap having run), for relocating Pictures/Downloads/Documents to another drive. Built the same way (status/plan → single confirmation → execution → report).
 

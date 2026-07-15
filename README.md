@@ -11,17 +11,17 @@ Repo: [github.com/schaib903/install-assistant](https://github.com/schaib903/inst
 
 | File | Platform | Package manager |
 |---|---|---|
-| `install-windows.ps1` | Windows 10/11 | winget |
-| `install-linux.sh` | Debian / Ubuntu / Mint | apt |
-| `setup-windows.ps1` | Windows 10/11 | winget |
-| `update-windows.ps1` | Windows 10/11 | winget |
-| `move-user-folders-windows.ps1` | Windows 10/11 | – |
+| `01_install-windows.ps1` | Windows 10/11 | winget |
+| `01_install-linux.sh` | Debian / Ubuntu / Mint | apt |
+| `00_setup-windows.ps1` | Windows 10/11 | winget |
+| `02_update-windows.ps1` | Windows 10/11 | winget |
+| `03_move-user-folders-windows.ps1` | Windows 10/11 | – |
 
 ---
 
 ## Setup Assistant (Windows Bootstrap)
 
-`setup-windows.ps1` is a standalone script for bootstrapping a new Windows machine – independent of the freeware installer. It checks and, if needed, installs the **bootstrap set**:
+`00_setup-windows.ps1` is a standalone script for bootstrapping a new Windows machine – independent of the freeware installer. It checks and, if needed, installs the **bootstrap set**:
 - **winget** (Windows Package Manager) – automatically registered or downloaded from GitHub if missing
 - **Git** (via winget)
 - **GitHub CLI** (`gh`, via winget) – needed for signing in to GitHub and cloning the repo
@@ -32,26 +32,26 @@ These components enable access to/download of repositories. As with the freeware
 
 Usage:
 ```powershell
-.\setup-windows.ps1
+.\00_setup-windows.ps1
 ```
 
 > **Note:** If PowerShell refuses to run with an execution policy error, see [Execution Policy](#prerequisites) under Prerequisites.
 
 ## Updating Programs
 
-`update-windows.ps1` keeps only the **catalog programs** from `install-windows.ps1` up to date (via `winget upgrade`) – not every winget package on the machine. Programs that aren't installed are skipped; winget itself decides whether an update is needed (already-current programs are reported as "already up to date", not an error).
+`02_update-windows.ps1` keeps only the **catalog programs** from `01_install-windows.ps1` up to date (via `winget upgrade`) – not every winget package on the machine. Programs that aren't installed are skipped; winget itself decides whether an update is needed (already-current programs are reported as "already up to date", not an error).
 
 Usage:
 ```powershell
-.\update-windows.ps1
+.\02_update-windows.ps1
 ```
 
 At the end of a manual run, the script asks (if not already set up) whether it should run automatically **every week** (every Monday, 9:00 AM) via the Windows Task Scheduler. Alternatively, use the parameters directly:
 
 ```powershell
-.\update-windows.ps1 -Register     # sets up the weekly task without asking
-.\update-windows.ps1 -Unregister   # removes the scheduled task again
-.\update-windows.ps1 -Silent       # unattended run without prompts (used by the scheduled task)
+.\02_update-windows.ps1 -Register     # sets up the weekly task without asking
+.\02_update-windows.ps1 -Unregister   # removes the scheduled task again
+.\02_update-windows.ps1 -Silent       # unattended run without prompts (used by the scheduled task)
 ```
 
 > **Note:** For reliable unattended updates of programs that require elevation, the scheduled task runs with the highest privileges. Setting up the task (`-Register` or the prompt at the end) therefore only works reliably if PowerShell was started as Administrator for that step.
@@ -60,11 +60,11 @@ At the end of a manual run, the script asks (if not already set up) whether it s
 
 ## Moving User Folders
 
-`move-user-folders-windows.ps1` is a standalone script for moving Pictures, Downloads, and Documents to another partition – separate from the bootstrap set, since it touches real user data and can be needed/run independently of it. It first shows the available drives with free space, checks whether there's enough space at the target, and warns if a folder is currently backed up via OneDrive (which could otherwise conflict with its synchronization).
+`03_move-user-folders-windows.ps1` is a standalone script for moving Pictures, Downloads, and Documents to another partition – separate from the bootstrap set, since it touches real user data and can be needed/run independently of it. It first shows the available drives with free space, checks whether there's enough space at the target, and warns if a folder is currently backed up via OneDrive (which could otherwise conflict with its synchronization).
 
 Usage:
 ```powershell
-.\move-user-folders-windows.ps1
+.\03_move-user-folders-windows.ps1
 ```
 
 > **Important:** Moving user folders touches real user data. Before the actual move, the script shows the full plan (old path → new path, required disk space) and requires explicit confirmation.
@@ -79,15 +79,15 @@ A fresh Windows install doesn't have Git yet, so the repo can't be cloned there.
 
 | File | Purpose |
 |---|---|
-| `bootstrap/setup-windows.ps1` | Runs the bootstrap set (winget, Git, GitHub CLI, repo clone, Claude Code CLI) |
+| `bootstrap/00_setup-windows.ps1` | Runs the bootstrap set (winget, Git, GitHub CLI, repo clone, Claude Code CLI) |
 | `bootstrap/CLAUDE.md` | Automatically read when `claude` is started in this folder, and instructs Claude Code to fetch this repo via `git clone` |
 
 **Flow on the new machine:**
 1. Copy both files from `bootstrap/` into an empty folder
-2. Run `.\setup-windows.ps1` (installs winget, Git, GitHub CLI, Claude Code CLI, and clones this repo, among other things) – on a fresh Windows install the PowerShell execution policy is usually not yet unlocked, see [Execution Policy](#prerequisites) under Prerequisites
+2. Run `.\00_setup-windows.ps1` (installs winget, Git, GitHub CLI, Claude Code CLI, and clones this repo, among other things) – on a fresh Windows install the PowerShell execution policy is usually not yet unlocked, see [Execution Policy](#prerequisites) under Prerequisites
 3. Start `claude` in the same folder – it automatically reads the `CLAUDE.md` there and clones this repo into a new subfolder (unless step 2 already cloned it)
 
-> **Maintenance note:** `bootstrap/setup-windows.ps1` is a plain copy of the file in the root directory (no symlink, no build step). When you change the main script, update the copy in the `bootstrap/` folder too.
+> **Maintenance note:** `bootstrap/00_setup-windows.ps1` is a plain copy of the file in the root directory (no symlink, no build step). When you change the main script, update the copy in the `bootstrap/` folder too.
 
 ---
 
@@ -141,7 +141,7 @@ A fresh Windows install doesn't have Git yet, so the repo can't be cloned there.
 Open a terminal (PowerShell) as a normal user and run:
 
 ```powershell
-.\install-windows.ps1
+.\01_install-windows.ps1
 ```
 
 > **Tip:** For system-wide installations, start the terminal as Administrator.
@@ -151,16 +151,16 @@ Open a terminal (PowerShell) as a normal user and run:
 Make the script executable and run it:
 
 ```bash
-chmod +x install-linux.sh
-./install-linux.sh
+chmod +x 01_install-linux.sh
+./01_install-linux.sh
 ```
 
 > **Important (transfer from Windows):** If the file was created on Windows and
 > transferred to Linux via USB/FTP, the line endings need to be converted:
 > ```bash
-> sed -i 's/\r//' install-linux.sh
+> sed -i 's/\r//' 01_install-linux.sh
 > # or alternatively:
-> dos2unix install-linux.sh
+> dos2unix 01_install-linux.sh
 > ```
 
 ---
@@ -242,7 +242,7 @@ The user should be asked beforehand whether to run updates (Y/N).
 #### New feature: uninstall
 
 ```
-Based on install-windows.ps1, create a new script
+Based on 01_install-windows.ps1, create a new script
 uninstall-windows.ps1 that can uninstall all listed programs.
 The user should be able to individually select which programs to remove.
 winget command: winget uninstall --id <ID> --silent
@@ -270,14 +270,14 @@ Content: date/time, hostname, OS, what was installed, what failed.
 
 ```
 Look up the correct winget ID for the program "Obsidian" and add it
-to the program list in install-windows.ps1.
-Also check whether an apt package exists for Ubuntu and add it to install-linux.sh.
+to the program list in 01_install-windows.ps1.
+Also check whether an apt package exists for Ubuntu and add it to 01_install-linux.sh.
 ```
 
 #### Improve error handling
 
 ```
-Improve error handling in install-windows.ps1:
+Improve error handling in 01_install-windows.ps1:
 if winget fails for a package, automatically start a second
 attempt without the --silent flag, so the user can operate the
 installer window manually.
@@ -287,7 +287,7 @@ installer window manually.
 
 ```
 Add a --dry-run parameter to both scripts.
-When the script is started with the parameter (e.g. .\install-windows.ps1 --dry-run),
+When the script is started with the parameter (e.g. .\01_install-windows.ps1 --dry-run),
 only the installation status should be shown, without installing anything.
 ```
 

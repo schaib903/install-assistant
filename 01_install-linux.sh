@@ -2,8 +2,8 @@
 # Freeware Install Assistant - Linux (Debian/Ubuntu)
 # Requires: apt, sudo
 # Note: file must use Unix line endings (LF). On Windows:
-#   Convert with: dos2unix install-linux.sh
-#   Or: sed -i 's/\r//' install-linux.sh
+#   Convert with: dos2unix 01_install-linux.sh
+#   Or: sed -i 's/\r//' 01_install-linux.sh
 
 # ─── Colors ───────────────────────────────────────────────────────────────
 
@@ -79,7 +79,7 @@ printf "  %-12s %s\n" "CPU:"       "$CPU_V"
 #              "brave" = Brave Browser
 # Note: Adobe Acrobat Reader is deliberately not offered here - Adobe has not
 # shipped an official Linux reader for years (Windows only, see
-# install-windows.ps1).
+# 01_install-windows.ps1).
 
 PROG_NAMEN=("Firefox" "Google Chrome" "Brave Browser" "VLC" "7-Zip" "VS Code" "Git")
 PROG_CMDS=( "firefox" "google-chrome" "brave-browser"  "vlc" "7z"   "code"    "git")

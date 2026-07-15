@@ -2,7 +2,7 @@
 # Setup Assistant - Windows Bootstrap
 # Bootstrap: winget, Git, GitHub CLI (sign in + clone install-assistant),
 # Claude Code CLI. Moving user folders (Pictures/Downloads/Documents) is a
-# separate script: move-user-folders-windows.ps1
+# separate script: 03_move-user-folders-windows.ps1
 
 $ProgressPreference    = "SilentlyContinue"
 $ErrorActionPreference = "Continue"
@@ -173,7 +173,7 @@ foreach ($k in $GrundsetupKandidaten) {
             ((Get-Command winget -ErrorAction SilentlyContinue) -and (Pruefe-Winget "GitHub.cli"))
         }
         "repo"   {
-            (Test-Path (Join-Path $PSScriptRoot "install-windows.ps1")) -or
+            (Test-Path (Join-Path $PSScriptRoot "01_install-windows.ps1")) -or
             (Test-Path (Join-Path $PSScriptRoot $GitHubRepoName))
         }
         "claude" {

@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 # Move User Folders - Windows
 # Moves Pictures/Downloads/Documents to another partition.
-# Standalone script, separate from the bootstrap (setup-windows.ps1).
+# Standalone script, separate from the bootstrap (00_setup-windows.ps1).
 
 $ProgressPreference    = "SilentlyContinue"
 $ErrorActionPreference = "Continue"
