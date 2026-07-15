@@ -10,10 +10,11 @@ Standalone, dependency-free installer/setup scripts, each a single self-containe
 |---|---|---|
 | `install_assist_windows.ps1` | Windows 10/11 | Detects & installs a fixed catalog of freeware via winget |
 | `install_assist_linux.sh` | Debian / Ubuntu / Mint / Pop!_OS | Same catalog via apt |
-| `setup_assistent_windows.ps1` | Windows 10/11 | New-machine bootstrap: winget/Git/Claude Code CLI + moving Pictures/Downloads/Documents to another drive |
+| `setup_assistent_windows.ps1` | Windows 10/11 | New-machine bootstrap: winget/Git/Claude Code CLI |
+| `verschiebe_benutzerordner_windows.ps1` | Windows 10/11 | Standalone: moves Pictures/Downloads/Documents to another drive |
 | `bootstrap/` | Windows 10/11 | Standalone kit for a fresh machine: a copy of `setup_assistent_windows.ps1` + a bootstrap `CLAUDE.md` that clones this repo |
 
-`instructions_freeware_installation_assist.md` is the original German spec the two `install_assist_*` scripts were generated from; treat it as the source of truth for their intended behavior if the scripts and docs ever disagree. `setup_assistent_windows.ps1` is a separate concern (initial machine setup, not freeware installation) and has no corresponding spec file — its behavior is defined by the script itself and by `README.md`.
+`instructions_freeware_installation_assist.md` is the original German spec the two `install_assist_*` scripts were generated from; treat it as the source of truth for their intended behavior if the scripts and docs ever disagree. `setup_assistent_windows.ps1` and `verschiebe_benutzerordner_windows.ps1` are a separate concern (initial machine setup / data relocation, not freeware installation) and have no corresponding spec file — their behavior is defined by the scripts themselves and by `README.md`.
 
 This repo lives at `https://github.com/schaib903/install-assistant` (private).
 
@@ -43,7 +44,7 @@ sed -i 's/\r//' install_assist_linux.sh
 
 Both scripts are interactive (they prompt with `J/N` and a Python-version number choice) and mutate real system state (they install software via winget/apt), so a dry run or careful narration of what would happen is preferable to blindly executing them in an agent context. If a `--dry-run` flag has been added (see prompt catalog below), prefer testing with that.
 
-`setup_assistent_windows.ps1` is higher-stakes to test than the two `install_assist_*` scripts: beyond installing software, it can move real user data (Pictures/Downloads/Documents) via `robocopy /MOVE`, which deletes the source after copying. Always verify changes with declined answers first (`keine`/`N` at every prompt) before ever answering `J` to the folder-move question on a real machine — a syntax check (`[System.Management.Automation.Language.Parser]::ParseFile(...)`) plus a declined-answers dry run is the safe verification loop; there is no safe way to test the actual move without touching real files.
+`verschiebe_benutzerordner_windows.ps1` is higher-stakes to test than the other scripts: it moves real user data (Pictures/Downloads/Documents) via `robocopy /MOVE`, which deletes the source after copying. Always verify changes with declined answers first (`N` at every prompt) before ever answering `J` to the folder-move question on a real machine — a syntax check (`[System.Management.Automation.Language.Parser]::ParseFile(...)`) plus a declined-answers dry run is the safe verification loop; there is no safe way to test the actual move without touching real files.
 
 ## Architecture — both scripts share one linear flow
 
@@ -81,20 +82,29 @@ New catalog entries automatically get picked up by the selection-prompt and inst
 
 ## Architecture — `setup_assistent_windows.ps1`
 
-A separate flow from the freeware installers, built the same way (status check → selection → single combined confirmation → execution → report), but for a different job: turning a fresh Windows install into one that can clone/use this repo, plus an optional data-relocation step.
+A separate flow from the freeware installers, built the same way (status check → selection → single confirmation → execution → report), but for a different job: turning a fresh Windows install into one that can clone/use this repo. Folder relocation is a separate script, see below.
 
-1. **System info + drive overview** — hostname/OS/RAM/CPU, then all drive letters with free/total space (`Get-Volume`) — this is direct context for the folder-move decision that comes later, not just cosmetic.
+1. **System info** — hostname/OS/RAM/CPU.
 2. **Grundsetup status check** — winget, Git, Claude Code CLI, each checked via `Get-Command` (plus path/winget-list fallbacks for Git, matching the freeware script's convention).
 3. **Grundsetup selection** — identical numbered-choice UX as the freeware script's program selection (comma list / `alle` / `keine`), scoped to whichever of the three are missing.
-4. **Folder-move planning** — always asked (Y/N) regardless of Grundsetup state. If yes: prompts for a target base folder, resolves the *current* path of each known folder dynamically via `shell:Personal` / `shell:My Pictures` / `shell:Downloads` (COM `Shell.Application`, not hardcoded paths — this is locale-proof, since Documents/Pictures are localized on non-English Windows but Downloads never is), computes folder sizes, checks free space on the target drive (with a 10% margin) before adding anything to the plan, and flags any folder currently living under a path containing `OneDrive` — moving a OneDrive-managed folder via registry edit can fight with OneDrive's own Known Folder Move feature, so the script warns and asks per-folder before proceeding.
-5. **Overview + single confirmation** — same pattern as the freeware script: show everything planned (Grundsetup items + folder moves with old→new paths and total size), one J/N gate before anything executes.
-6. **Execution** — Grundsetup runs in a fixed dependency order (winget → Git → Claude), not selection order, because Git installs via `winget install Git.Git` and Claude's native installer needs network access; `$env:Path` is refreshed from the registry after each install attempt since a new process/App Execution Alias registration won't otherwise be visible in the running session. Folder moves use `robocopy <old> <new> /E /MOVE` (exit codes 0–7 are success, matching robocopy's own convention — not "0 means success"), then update both `HKCU:\...\Explorer\User Shell Folders` and the legacy `HKCU:\...\Explorer\Shell Folders` keys, then restart `explorer.exe` once at the end if at least one move succeeded.
-7. **Final report** — one combined success/failure list across Grundsetup items and folder moves.
+4. **Overview + single confirmation** — same pattern as the freeware script: show everything planned, one J/N gate before anything executes.
+5. **Execution** — runs in a fixed dependency order (winget → Git → Claude), not selection order, because Git installs via `winget install Git.Git` and Claude's native installer needs network access; `$env:Path` is refreshed from the registry after each install attempt since a new process/App Execution Alias registration won't otherwise be visible in the running session.
+6. **Final report** — success/failure list across Grundsetup items.
 
 Notable implementation choices, in case they need revisiting:
 - **winget bootstrap** tries `Add-AppxPackage -RegisterByFamilyName` first (fixes the common "present but not registered" case), then falls back to downloading the latest `.msixbundle` from the `microsoft/winget-cli` GitHub releases. It does *not* try to pin/install the `Microsoft.VCLibs`/`Microsoft.UI.Xaml` framework dependencies — if those are missing, `Add-AppxPackage` fails with a dependency error and the script surfaces that + a link to `https://aka.ms/getwinget`, rather than guessing a pinned dependency version that could go stale.
 - **Claude Code CLI** installs via the officially documented native installer (`irm https://claude.ai/install.ps1 | iex`) — the exact command is echoed to the console before running it, since it fetches and executes a remote script.
 - The script does **not** hard-require Administrator — Appx registration and `HKCU` registry edits are per-user, and winget/its installers prompt for elevation themselves when a specific package needs it.
+
+## Architecture — `verschiebe_benutzerordner_windows.ps1`
+
+A separate flow from the Grundsetup script, standalone (no dependency on Grundsetup having run), for relocating Pictures/Downloads/Documents to another drive. Built the same way (status/plan → single confirmation → execution → report).
+
+1. **Drive overview** — all drive letters with free/total space (`Get-Volume`) — direct context for the target-drive decision that follows, not just cosmetic.
+2. **Folder-move planning** — always asked (Y/N). If yes: prompts for a target base folder, resolves the *current* path of each known folder dynamically via `shell:Personal` / `shell:My Pictures` / `shell:Downloads` (COM `Shell.Application`, not hardcoded paths — this is locale-proof, since Documents/Pictures are localized on non-English Windows but Downloads never is), computes folder sizes, checks free space on the target drive (with a 10% margin) before adding anything to the plan, and flags any folder currently living under a path containing `OneDrive` — moving a OneDrive-managed folder via registry edit can fight with OneDrive's own Known Folder Move feature, so the script warns and asks per-folder before proceeding.
+3. **Overview + single confirmation** — show everything planned (old→new paths and total size), one J/N gate before anything executes.
+4. **Execution** — `robocopy <old> <new> /E /MOVE` (exit codes 0–7 are success, matching robocopy's own convention — not "0 means success"), then updates both `HKCU:\...\Explorer\User Shell Folders` and the legacy `HKCU:\...\Explorer\Shell Folders` keys, then restarts `explorer.exe` once at the end if at least one move succeeded.
+5. **Final report** — success/failure list across folder moves.
 
 ## Other repo contents
 

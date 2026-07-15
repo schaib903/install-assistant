@@ -14,25 +14,31 @@ Repo: [github.com/schaib903/install-assistant](https://github.com/schaib903/inst
 | `install_assist_windows.ps1` | Windows 10/11 | winget |
 | `install_assist_linux.sh` | Debian / Ubuntu / Mint | apt |
 | `setup_assistent_windows.ps1` | Windows 10/11 | winget |
+| `verschiebe_benutzerordner_windows.ps1` | Windows 10/11 | – |
 
 ---
 
 ## Setup-Assistent (Windows Ersteinrichtung)
 
-`setup_assistent_windows.ps1` ist ein eigenständiges Skript für die Ersteinrichtung eines neuen Windows-Rechners – unabhängig vom Freeware-Installer. Es besteht aus zwei Teilen:
-
-**Grundsetup** – prüft und installiert bei Bedarf:
+`setup_assistent_windows.ps1` ist ein eigenständiges Skript für die Ersteinrichtung eines neuen Windows-Rechners – unabhängig vom Freeware-Installer. Es prüft und installiert bei Bedarf das **Grundsetup**:
 - **winget** (Windows Package Manager) – wird, falls nicht vorhanden, automatisch registriert bzw. von GitHub nachinstalliert
 - **Git**
 - **Claude Code CLI** (offizieller nativer Installer, `irm https://claude.ai/install.ps1 | iex`)
 
 Diese drei Komponenten ermöglichen den Zugriff auf/Download von Repositories. Wie beim Freeware-Installer wird zuerst geprüft, was bereits installiert ist – nur die fehlenden Komponenten werden zur Auswahl angeboten (einzeln, "alle" oder "keine").
 
-**Verschiebung der Benutzerordner** – optional, immer abgefragt: Bilder, Downloads und Dokumente können auf eine andere Partition verschoben werden. Das Skript zeigt vorher die verfügbaren Laufwerke mit freiem Speicherplatz, prüft ob am Zielort genug Platz vorhanden ist, und warnt, falls ein Ordner aktuell über OneDrive gesichert wird (das kann sonst mit der Synchronisierung kollidieren).
-
 Verwendung:
 ```powershell
 .\setup_assistent_windows.ps1
+```
+
+## Benutzerordner verschieben
+
+`verschiebe_benutzerordner_windows.ps1` ist ein eigenständiges Skript, um Bilder, Downloads und Dokumente auf eine andere Partition zu verschieben – getrennt vom Grundsetup, da es ein Eingriff in echte Nutzerdaten ist und unabhängig davon benötigt/ausgeführt werden kann. Es zeigt vorher die verfügbaren Laufwerke mit freiem Speicherplatz, prüft ob am Zielort genug Platz vorhanden ist, und warnt, falls ein Ordner aktuell über OneDrive gesichert wird (das kann sonst mit der Synchronisierung kollidieren).
+
+Verwendung:
+```powershell
+.\verschiebe_benutzerordner_windows.ps1
 ```
 
 > **Wichtig:** Das Verschieben der Benutzerordner ist ein Eingriff in echte Nutzerdaten. Vor dem eigentlichen Verschieben zeigt das Skript den vollständigen Plan (alter Pfad → neuer Pfad, benötigter Speicherplatz) und verlangt eine explizite Bestätigung.
