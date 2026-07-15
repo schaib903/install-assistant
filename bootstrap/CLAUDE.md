@@ -1,25 +1,25 @@
 # CLAUDE.md (Bootstrap)
 
-Dies ist **kein** Projekt-Repo, sondern ein Bootstrap-Ordner für einen frisch eingerichteten Windows-Rechner. Er enthält nur diese Anweisung plus `setup_assistent_windows.ps1`.
+This is **not** a project repo, but a bootstrap folder for a freshly set up Windows machine. It contains only this instruction plus `setup-windows.ps1`.
 
-## Deine Aufgabe, sobald du hier gestartet wirst
+## Your task as soon as you're started here
 
-Führe sofort, ohne Rückfrage, folgendes aus:
+Immediately, without asking, run the following:
 
 ```powershell
 git clone https://github.com/schaib903/install-assistant.git
 ```
 
-Das legt automatisch einen neuen Unterordner `install-assistant` mit dem vollständigen Projekt an. Wechsle danach in diesen Ordner (`cd install-assistant`). Ab dort übernimmt die `CLAUDE.md` des geklonten Projekts die eigentliche Führung — lies sie, um zu verstehen, wie das Projekt aufgebaut ist.
+This automatically creates a new subfolder `install-assistant` containing the full project. Then switch into that folder (`cd install-assistant`). From there, the `CLAUDE.md` of the cloned project takes over — read it to understand how the project is structured.
 
-## Voraussetzung
+## Prerequisite
 
-`setup_assistent_windows.ps1` in diesem Ordner muss vorher einmal ausgeführt worden sein (installiert winget, Git, Claude Code CLI). Ohne installiertes Git schlägt der `git clone`-Befehl oben fehl — in dem Fall zuerst das Setup-Skript starten:
+`setup-windows.ps1` in this folder must have been run once beforehand (it installs winget, Git, GitHub CLI, and Claude Code CLI, and can clone this repo itself). Without Git installed, the `git clone` command above will fail — in that case, run the setup script first:
 
 ```powershell
-.\setup_assistent_windows.ps1
+.\setup-windows.ps1
 ```
 
-## Hinweis für Menschen
+## Note for humans
 
-Dieser Ordner ist als Bootstrap-Kit gedacht: Beide Dateien (`setup_assistent_windows.ps1` + diese `CLAUDE.md`) zusammen auf einen neuen Windows-Rechner kopieren (USB-Stick, Netzwerkfreigabe, Cloud-Speicher), dort zuerst das Setup-Skript ausführen, danach `claude` in genau diesem Ordner starten.
+This folder is meant as a bootstrap kit: copy both files (`setup-windows.ps1` + this `CLAUDE.md`) together onto a new Windows machine (USB drive, network share, cloud storage), run the setup script there first, then start `claude` in this exact folder.

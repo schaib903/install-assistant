@@ -1,8 +1,8 @@
 #Requires -Version 5.1
-# Setup-Assistent - Windows Grundsetup
-# Grundsetup: winget, Git, GitHub CLI (Anmeldung + Klonen von install-assistant),
-# Claude Code CLI. Verschiebung von Benutzerordnern (Bilder/Downloads/Dokumente)
-# ist ein eigenes Skript: verschiebe_benutzerordner_windows.ps1
+# Setup Assistant - Windows Bootstrap
+# Bootstrap: winget, Git, GitHub CLI (sign in + clone install-assistant),
+# Claude Code CLI. Moving user folders (Pictures/Downloads/Documents) is a
+# separate script: move-user-folders-windows.ps1
 
 $ProgressPreference    = "SilentlyContinue"
 $ErrorActionPreference = "Continue"
@@ -10,7 +10,7 @@ $ErrorActionPreference = "Continue"
 $GitHubRepoName  = "install-assistant"
 $OkCodes         = @(0, -1978335189, -1978335106, 3010)
 
-# ─── Hilfsfunktionen ────────────────────────────────────────────────────────
+# ─── Helper functions ───────────────────────────────────────────────────────
 
 function Abschnitt([string]$Titel) {
     Write-Host ""
@@ -33,7 +33,7 @@ function Winget-Installiere([string]$ID) {
     $ausgabe = winget install --id $ID --exact --silent `
         --accept-package-agreements --accept-source-agreements 2>&1
     if ($OkCodes -notcontains $LASTEXITCODE) {
-        Write-Host "  winget-Ausgabe:" -ForegroundColor DarkGray
+        Write-Host "  winget output:" -ForegroundColor DarkGray
         $ausgabe | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
     }
     return $LASTEXITCODE
@@ -45,7 +45,7 @@ function Aktualisiere-Path {
 }
 
 function Installiere-Winget {
-    Write-Host "  Versuche winget zu registrieren ..." -ForegroundColor Cyan
+    Write-Host "  Trying to register winget ..." -ForegroundColor Cyan
     try {
         Add-AppxPackage -RegisterByFamilyName `
             -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe -ErrorAction Stop
@@ -54,7 +54,7 @@ function Installiere-Winget {
     Aktualisiere-Path
     if (Get-Command winget -ErrorAction SilentlyContinue) { return $true }
 
-    Write-Host "  Lade App Installer (winget) von GitHub herunter ..." -ForegroundColor Cyan
+    Write-Host "  Downloading App Installer (winget) from GitHub ..." -ForegroundColor Cyan
     $tmp    = Join-Path $env:TEMP "winget-setup"
     $bundle = Join-Path $tmp "DesktopAppInstaller.msixbundle"
     New-Item -ItemType Directory -Path $tmp -Force | Out-Null
@@ -65,9 +65,9 @@ function Installiere-Winget {
             -OutFile $bundle
         Add-AppxPackage -Path $bundle -ErrorAction Stop
     } catch {
-        Write-Host "  [!!] Automatische winget-Installation fehlgeschlagen: $($_.Exception.Message)" -ForegroundColor Red
-        Write-Host "       Moegliche Ursache: fehlende Abhaengigkeit (Microsoft.VCLibs / Microsoft.UI.Xaml)." -ForegroundColor Yellow
-        Write-Host "       Bitte manuell installieren: https://aka.ms/getwinget" -ForegroundColor Yellow
+        Write-Host "  [!!] Automatic winget installation failed: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "       Possible cause: missing dependency (Microsoft.VCLibs / Microsoft.UI.Xaml)." -ForegroundColor Yellow
+        Write-Host "       Please install manually: https://aka.ms/getwinget" -ForegroundColor Yellow
         return $false
     } finally {
         Remove-Item -Path $tmp -Recurse -Force -ErrorAction SilentlyContinue
@@ -76,30 +76,30 @@ function Installiere-Winget {
     Aktualisiere-Path
     if (Get-Command winget -ErrorAction SilentlyContinue) { return $true }
 
-    Write-Host "  [!!] winget wurde installiert, ist in dieser Sitzung aber noch nicht verfuegbar." -ForegroundColor Yellow
-    Write-Host "       Bitte Terminal neu starten und Skript erneut ausfuehren." -ForegroundColor Yellow
+    Write-Host "  [!!] winget was installed but isn't available in this session yet." -ForegroundColor Yellow
+    Write-Host "       Please restart the terminal and re-run the script." -ForegroundColor Yellow
     return $false
 }
 
 function Hole-Repo([string]$ZielVerzeichnis) {
     if (Test-Path $ZielVerzeichnis) {
-        Write-Host "  [OK] Repo-Ordner existiert bereits: $ZielVerzeichnis" -ForegroundColor Green
+        Write-Host "  [OK] Repo folder already exists: $ZielVerzeichnis" -ForegroundColor Green
         return $true
     }
 
     gh auth status *> $null
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "  GitHub-Anmeldung erforderlich - folge den Anweisungen im Terminal/Browser ..." -ForegroundColor Cyan
+        Write-Host "  GitHub sign-in required - follow the instructions in the terminal/browser ..." -ForegroundColor Cyan
         gh auth login
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "  [!!] GitHub-Anmeldung fehlgeschlagen oder abgebrochen" -ForegroundColor Red
+            Write-Host "  [!!] GitHub sign-in failed or was cancelled" -ForegroundColor Red
             return $false
         }
     }
 
     $besitzer = gh api user --jq ".login" 2>&1
     if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($besitzer)) {
-        Write-Host "  [!!] GitHub-Benutzername konnte nicht ermittelt werden" -ForegroundColor Red
+        Write-Host "  [!!] Could not determine the GitHub username" -ForegroundColor Red
         return $false
     }
 
@@ -107,26 +107,26 @@ function Hole-Repo([string]$ZielVerzeichnis) {
     return ($LASTEXITCODE -eq 0)
 }
 
-# ─── Voraussetzungen ────────────────────────────────────────────────────────
+# ─── Prerequisites ──────────────────────────────────────────────────────────
 
 if ($env:OS -ne "Windows_NT") {
-    Write-Host "FEHLER: Dieses Skript ist nur fuer Windows." -ForegroundColor Red
+    Write-Host "ERROR: This script is Windows-only." -ForegroundColor Red
     exit 1
 }
 
-# ─── Kopfzeile ──────────────────────────────────────────────────────────────
+# ─── Header ──────────────────────────────────────────────────────────────────
 
 Clear-Host
 Write-Host ""
 Write-Host "  +------------------------------------------------------------+" -ForegroundColor Cyan
-Write-Host "  |      Setup-Assistent  -  Windows Grundsetup                |" -ForegroundColor Cyan
+Write-Host "  |      Setup Assistant  -  Windows Bootstrap                 |" -ForegroundColor Cyan
 Write-Host "  +------------------------------------------------------------+" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  Hinweis: fuer systemweite Installationen ggf. als Administrator ausfuehren." -ForegroundColor DarkGray
+Write-Host "  Note: for system-wide installations, run as Administrator if needed." -ForegroundColor DarkGray
 
-# ─── Systeminformationen ────────────────────────────────────────────────────
+# ─── System information ─────────────────────────────────────────────────────
 
-Abschnitt "Systeminformationen"
+Abschnitt "System Information"
 Write-Host ""
 try {
     $os  = Get-CimInstance Win32_OperatingSystem
@@ -137,26 +137,26 @@ try {
     Write-Host ("  {0,-12} {1} GB" -f "RAM:",    $ram)
     Write-Host ("  {0,-12} {1}" -f "CPU:",       $cpu)
 } catch {
-    Write-Host "  Systeminfo nicht verfuegbar." -ForegroundColor DarkYellow
+    Write-Host "  System info not available." -ForegroundColor DarkYellow
 }
 
-# ─── Grundsetup: Status pruefen ─────────────────────────────────────────────
+# ─── Bootstrap: check status ────────────────────────────────────────────────
 
-Abschnitt "Grundsetup-Status"
+Abschnitt "Bootstrap Status"
 Write-Host ""
 
 $GrundsetupKandidaten = @(
     @{ Name = "winget (Windows Package Manager)";           Key = "winget" }
     @{ Name = "Git";                                        Key = "git" }
     @{ Name = "GitHub CLI (gh)";                            Key = "gh" }
-    @{ Name = "install-assistant Repo (Anmeldung + Klonen)"; Key = "repo" }
+    @{ Name = "install-assistant repo (sign-in + clone)";   Key = "repo" }
     @{ Name = "Claude Code CLI";                            Key = "claude" }
 )
 
 $GrundsetupFehlend = [System.Collections.ArrayList]::new()
 
 foreach ($k in $GrundsetupKandidaten) {
-    Write-Host "  Pruefe $($k.Name) ..." -NoNewline -ForegroundColor DarkGray
+    Write-Host "  Checking $($k.Name) ..." -NoNewline -ForegroundColor DarkGray
 
     $ok = switch ($k.Key) {
         "winget" { [bool](Get-Command winget -ErrorAction SilentlyContinue) }
@@ -173,7 +173,7 @@ foreach ($k in $GrundsetupKandidaten) {
             ((Get-Command winget -ErrorAction SilentlyContinue) -and (Pruefe-Winget "GitHub.cli"))
         }
         "repo"   {
-            (Test-Path (Join-Path $PSScriptRoot "install_assist_windows.ps1")) -or
+            (Test-Path (Join-Path $PSScriptRoot "install-windows.ps1")) -or
             (Test-Path (Join-Path $PSScriptRoot $GitHubRepoName))
         }
         "claude" {
@@ -183,36 +183,36 @@ foreach ($k in $GrundsetupKandidaten) {
     }
 
     if ($ok) {
-        Write-Host "`r  [OK] $($k.Name.PadRight(32)) installiert          " -ForegroundColor Green
+        Write-Host "`r  [OK] $($k.Name.PadRight(32)) installed             " -ForegroundColor Green
     } else {
-        Write-Host "`r  [--] $($k.Name.PadRight(32)) nicht installiert     " -ForegroundColor Red
+        Write-Host "`r  [--] $($k.Name.PadRight(32)) not installed         " -ForegroundColor Red
         [void]$GrundsetupFehlend.Add($k)
     }
 }
 
-# ─── Grundsetup: Auswahl ────────────────────────────────────────────────────
+# ─── Bootstrap: selection ───────────────────────────────────────────────────
 
 $GrundsetupAusgewaehlt = [System.Collections.ArrayList]::new()
 
 if ($GrundsetupFehlend.Count -gt 0) {
-    Abschnitt "Auswahl Grundsetup"
+    Abschnitt "Select Bootstrap Items"
     Write-Host ""
-    Write-Host "  Folgende Komponenten sind noch nicht installiert:" -ForegroundColor White
+    Write-Host "  The following components are not yet installed:" -ForegroundColor White
     Write-Host ""
     for ($i = 0; $i -lt $GrundsetupFehlend.Count; $i++) {
         Write-Host ("    [{0}]  {1}" -f ($i + 1), $GrundsetupFehlend[$i].Name) -ForegroundColor Cyan
     }
     Write-Host ""
-    Write-Host "  Eingabe: Nummern durch Komma getrennt (z.B. 1,3), 'alle' oder 'keine'" -ForegroundColor DarkGray
+    Write-Host "  Input: comma-separated numbers (e.g. 1,3), 'all' or 'none'" -ForegroundColor DarkGray
     Write-Host ""
 
     :grundsetupauswahl while ($true) {
-        $eingabe = (Read-Host "  Auswahl").Trim()
+        $eingabe = (Read-Host "  Selection").Trim()
 
-        if ($eingabe -eq "" -or $eingabe -match "^(keine|nein|n)$") {
+        if ($eingabe -eq "" -or $eingabe -match "^(none|no|n)$") {
             break grundsetupauswahl
         }
-        if ($eingabe -match "^(alle|a)$") {
+        if ($eingabe -match "^(all|a)$") {
             $GrundsetupAusgewaehlt.AddRange($GrundsetupFehlend)
             break grundsetupauswahl
         }
@@ -225,7 +225,7 @@ if ($GrundsetupFehlend.Count -gt 0) {
             if ($n -match "^\d+$" -and [int]$n -ge 1 -and [int]$n -le $GrundsetupFehlend.Count) {
                 [void]$auswahl.Add($GrundsetupFehlend[[int]$n - 1])
             } else {
-                Write-Host "  Ungueltige Eingabe: '$n'" -ForegroundColor Red
+                Write-Host "  Invalid input: '$n'" -ForegroundColor Red
                 $gueltig = $false
                 break
             }
@@ -238,68 +238,68 @@ if ($GrundsetupFehlend.Count -gt 0) {
     }
 } else {
     Write-Host ""
-    Write-Host "  Grundsetup ist bereits vollstaendig installiert." -ForegroundColor Green
+    Write-Host "  Bootstrap is already fully installed." -ForegroundColor Green
 }
 
 $AusgewaehlteKeys = $GrundsetupAusgewaehlt | ForEach-Object { $_.Key }
 
-# ─── Installationsuebersicht ────────────────────────────────────────────────
+# ─── Installation overview ──────────────────────────────────────────────────
 
-Abschnitt "Installationsuebersicht"
+Abschnitt "Installation Overview"
 Write-Host ""
 
 if ($GrundsetupAusgewaehlt.Count -eq 0) {
-    Write-Host "  Es wurde nichts zur Ausfuehrung ausgewaehlt." -ForegroundColor Yellow
+    Write-Host "  Nothing was selected to run." -ForegroundColor Yellow
     Write-Host ""
-    Read-Host "  Enter zum Beenden"
+    Read-Host "  Enter to exit"
     exit 0
 }
 
 foreach ($k in $GrundsetupAusgewaehlt) { Write-Host "  *  $($k.Name)" -ForegroundColor Red }
 
 Write-Host ""
-$antwort = Read-Host "  Jetzt ausfuehren? (J/N)"
+$antwort = Read-Host "  Run this now? (Y/N)"
 
-if ($antwort -notmatch "^[jJyY]$") {
+if ($antwort -notmatch "^[yY]$") {
     Write-Host ""
-    Write-Host "  Abgebrochen." -ForegroundColor Yellow
+    Write-Host "  Cancelled." -ForegroundColor Yellow
     Write-Host ""
     exit 0
 }
 
-# ─── Ausfuehrung: Grundsetup ────────────────────────────────────────────────
+# ─── Execution: bootstrap ───────────────────────────────────────────────────
 
-Abschnitt "Grundsetup wird eingerichtet"
+Abschnitt "Setting Up Bootstrap"
 Write-Host ""
 
 $Erfolg  = [System.Collections.ArrayList]::new()
 $Fehler  = [System.Collections.ArrayList]::new()
 
 if ($AusgewaehlteKeys -contains "winget") {
-    Write-Host "  Installiere winget ..." -ForegroundColor Cyan
+    Write-Host "  Installing winget ..." -ForegroundColor Cyan
     if (Installiere-Winget) {
-        Write-Host "  [OK] winget erfolgreich eingerichtet" -ForegroundColor Green
+        Write-Host "  [OK] winget set up successfully" -ForegroundColor Green
         [void]$Erfolg.Add("winget")
     } else {
-        Write-Host "  [!!] winget-Einrichtung fehlgeschlagen" -ForegroundColor Red
+        Write-Host "  [!!] winget setup failed" -ForegroundColor Red
         [void]$Fehler.Add("winget")
     }
     Write-Host ""
 }
 
 if ($AusgewaehlteKeys -contains "git") {
-    Write-Host "  Installiere Git ..." -ForegroundColor Cyan
+    Write-Host "  Installing Git ..." -ForegroundColor Cyan
     if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-        Write-Host "  [!!] Git fehlgeschlagen: winget nicht verfuegbar" -ForegroundColor Red
+        Write-Host "  [!!] Git failed: winget not available" -ForegroundColor Red
         [void]$Fehler.Add("Git")
     } else {
         $code = Winget-Installiere "Git.Git"
         if ($OkCodes -contains $code) {
-            Write-Host "  [OK] Git erfolgreich installiert" -ForegroundColor Green
+            Write-Host "  [OK] Git installed successfully" -ForegroundColor Green
             [void]$Erfolg.Add("Git")
             Aktualisiere-Path
         } else {
-            Write-Host "  [!!] Git fehlgeschlagen  (Code: $code)" -ForegroundColor Red
+            Write-Host "  [!!] Git failed  (code: $code)" -ForegroundColor Red
             [void]$Fehler.Add("Git")
         }
     }
@@ -307,18 +307,18 @@ if ($AusgewaehlteKeys -contains "git") {
 }
 
 if ($AusgewaehlteKeys -contains "gh") {
-    Write-Host "  Installiere GitHub CLI ..." -ForegroundColor Cyan
+    Write-Host "  Installing GitHub CLI ..." -ForegroundColor Cyan
     if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-        Write-Host "  [!!] GitHub CLI fehlgeschlagen: winget nicht verfuegbar" -ForegroundColor Red
+        Write-Host "  [!!] GitHub CLI failed: winget not available" -ForegroundColor Red
         [void]$Fehler.Add("GitHub CLI")
     } else {
         $code = Winget-Installiere "GitHub.cli"
         if ($OkCodes -contains $code) {
-            Write-Host "  [OK] GitHub CLI erfolgreich installiert" -ForegroundColor Green
+            Write-Host "  [OK] GitHub CLI installed successfully" -ForegroundColor Green
             [void]$Erfolg.Add("GitHub CLI")
             Aktualisiere-Path
         } else {
-            Write-Host "  [!!] GitHub CLI fehlgeschlagen  (Code: $code)" -ForegroundColor Red
+            Write-Host "  [!!] GitHub CLI failed  (code: $code)" -ForegroundColor Red
             [void]$Fehler.Add("GitHub CLI")
         }
     }
@@ -326,67 +326,67 @@ if ($AusgewaehlteKeys -contains "gh") {
 }
 
 if ($AusgewaehlteKeys -contains "repo") {
-    Write-Host "  Melde bei GitHub an und klone install-assistant ..." -ForegroundColor Cyan
+    Write-Host "  Signing in to GitHub and cloning install-assistant ..." -ForegroundColor Cyan
     if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-        Write-Host "  [!!] Repo-Klon fehlgeschlagen: gh (GitHub CLI) nicht verfuegbar" -ForegroundColor Red
-        [void]$Fehler.Add("install-assistant Repo")
+        Write-Host "  [!!] Repo clone failed: gh (GitHub CLI) not available" -ForegroundColor Red
+        [void]$Fehler.Add("install-assistant repo")
     } else {
         $ziel = Join-Path $PSScriptRoot $GitHubRepoName
         if (Hole-Repo $ziel) {
-            Write-Host "  [OK] Repo verfuegbar unter $ziel" -ForegroundColor Green
-            [void]$Erfolg.Add("install-assistant Repo")
+            Write-Host "  [OK] Repo available at $ziel" -ForegroundColor Green
+            [void]$Erfolg.Add("install-assistant repo")
         } else {
-            Write-Host "  [!!] Repo-Klon fehlgeschlagen" -ForegroundColor Red
-            [void]$Fehler.Add("install-assistant Repo")
+            Write-Host "  [!!] Repo clone failed" -ForegroundColor Red
+            [void]$Fehler.Add("install-assistant repo")
         }
     }
     Write-Host ""
 }
 
 if ($AusgewaehlteKeys -contains "claude") {
-    Write-Host "  Installiere Claude Code CLI ..." -ForegroundColor Cyan
+    Write-Host "  Installing Claude Code CLI ..." -ForegroundColor Cyan
     if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-        Write-Host "  [!!] Claude Code CLI fehlgeschlagen: winget nicht verfuegbar" -ForegroundColor Red
+        Write-Host "  [!!] Claude Code CLI failed: winget not available" -ForegroundColor Red
         [void]$Fehler.Add("Claude Code CLI")
     } else {
         $code = Winget-Installiere "Anthropic.ClaudeCode"
         if ($OkCodes -contains $code) {
-            Write-Host "  [OK] Claude Code CLI erfolgreich installiert" -ForegroundColor Green
+            Write-Host "  [OK] Claude Code CLI installed successfully" -ForegroundColor Green
             [void]$Erfolg.Add("Claude Code CLI")
             Aktualisiere-Path
         } else {
-            Write-Host "  [!!] Claude Code CLI fehlgeschlagen  (Code: $code)" -ForegroundColor Red
+            Write-Host "  [!!] Claude Code CLI failed  (code: $code)" -ForegroundColor Red
             [void]$Fehler.Add("Claude Code CLI")
         }
     }
     Write-Host ""
 }
 
-# ─── Abschlussbericht ───────────────────────────────────────────────────────
+# ─── Final report ────────────────────────────────────────────────────────────
 
-Abschnitt "Abschlussbericht"
+Abschnitt "Final Report"
 Write-Host ""
 
 if ($Erfolg.Count -gt 0) {
-    Write-Host "  Erfolgreich:" -ForegroundColor Green
+    Write-Host "  Successful:" -ForegroundColor Green
     foreach ($n in $Erfolg) { Write-Host "    [OK] $n" -ForegroundColor Green }
     Write-Host ""
 }
 
 if ($Fehler.Count -gt 0) {
-    Write-Host "  Fehlgeschlagen:" -ForegroundColor Red
+    Write-Host "  Failed:" -ForegroundColor Red
     foreach ($n in $Fehler) { Write-Host "    [!!] $n" -ForegroundColor Red }
     Write-Host ""
-    Write-Host "  Tipp: Terminal neu starten (PATH-Aktualisierung), Administratorrechte" -ForegroundColor Yellow
-    Write-Host "        oder Internetverbindung pruefen." -ForegroundColor Yellow
+    Write-Host "  Tip: restart the terminal (PATH refresh), check Administrator rights," -ForegroundColor Yellow
+    Write-Host "       or check your internet connection." -ForegroundColor Yellow
     Write-Host ""
 }
 
 if ($Fehler.Count -eq 0) {
-    Write-Host "  Alles erfolgreich abgeschlossen!" -ForegroundColor Green
+    Write-Host "  Everything completed successfully!" -ForegroundColor Green
 }
 
 Write-Host ""
 Write-Host ("  " + ("-" * 56)) -ForegroundColor DarkGray
 Write-Host ""
-Read-Host "  Enter zum Beenden"
+Read-Host "  Enter to exit"

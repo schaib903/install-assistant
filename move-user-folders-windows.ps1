@@ -1,12 +1,12 @@
 #Requires -Version 5.1
-# Verschiebe-Benutzerordner - Windows
-# Verschiebt Bilder/Downloads/Dokumente auf eine andere Partition.
-# Eigenstaendiges Skript, getrennt vom Grundsetup (setup_assistent_windows.ps1).
+# Move User Folders - Windows
+# Moves Pictures/Downloads/Documents to another partition.
+# Standalone script, separate from the bootstrap (setup-windows.ps1).
 
 $ProgressPreference    = "SilentlyContinue"
 $ErrorActionPreference = "Continue"
 
-# ─── Hilfsfunktionen ────────────────────────────────────────────────────────
+# ─── Helper functions ───────────────────────────────────────────────────────
 
 function Abschnitt([string]$Titel) {
     Write-Host ""
@@ -33,63 +33,63 @@ function Get-Ordnergroesse([string]$Pfad) {
     return $summe
 }
 
-# ─── Voraussetzungen ────────────────────────────────────────────────────────
+# ─── Prerequisites ──────────────────────────────────────────────────────────
 
 if ($env:OS -ne "Windows_NT") {
-    Write-Host "FEHLER: Dieses Skript ist nur fuer Windows." -ForegroundColor Red
+    Write-Host "ERROR: This script is Windows-only." -ForegroundColor Red
     exit 1
 }
 
-# ─── Kopfzeile ──────────────────────────────────────────────────────────────
+# ─── Header ──────────────────────────────────────────────────────────────────
 
 Clear-Host
 Write-Host ""
 Write-Host "  +------------------------------------------------------------+" -ForegroundColor Cyan
-Write-Host "  |      Verschiebe-Benutzerordner  -  Windows                 |" -ForegroundColor Cyan
+Write-Host "  |      Move User Folders  -  Windows                         |" -ForegroundColor Cyan
 Write-Host "  +------------------------------------------------------------+" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  Hinweis: verschiebt echte Nutzerdaten (Bilder/Downloads/Dokumente)." -ForegroundColor DarkGray
+Write-Host "  Note: moves real user data (Pictures/Downloads/Documents)." -ForegroundColor DarkGray
 
-# ─── Laufwerksuebersicht ────────────────────────────────────────────────────
+# ─── Drive overview ──────────────────────────────────────────────────────────
 
-Abschnitt "Laufwerksuebersicht"
+Abschnitt "Drive Overview"
 Write-Host ""
 try {
     Get-Volume | Where-Object { $_.DriveLetter } | Sort-Object DriveLetter | ForEach-Object {
         $freiGB    = [math]::Round($_.SizeRemaining / 1GB, 1)
         $groesseGB = [math]::Round($_.Size / 1GB, 1)
-        Write-Host ("    {0}:\  {1,7} GB frei  /  {2,7} GB gesamt   {3}" -f `
+        Write-Host ("    {0}:\  {1,7} GB free  /  {2,7} GB total   {3}" -f `
             $_.DriveLetter, $freiGB, $groesseGB, $_.FileSystemLabel)
     }
 } catch {
-    Write-Host "  Laufwerksinfo nicht verfuegbar." -ForegroundColor DarkYellow
+    Write-Host "  Drive info not available." -ForegroundColor DarkYellow
 }
 
-# ─── Verschiebung der Benutzerordner: Planung ───────────────────────────────
+# ─── Move user folders: planning ────────────────────────────────────────────
 
-Abschnitt "Verschiebung der Benutzerordner"
+Abschnitt "Move User Folders"
 Write-Host ""
 
 $OrdnerDefinitionen = @(
-    @{ Label = "Bilder";    ShellName = "My Pictures"; RegName = "My Pictures" }
+    @{ Label = "Pictures";  ShellName = "My Pictures"; RegName = "My Pictures" }
     @{ Label = "Downloads"; ShellName = "Downloads";   RegName = "{374DE290-123F-4565-9164-39C4925E467B}" }
-    @{ Label = "Dokumente"; ShellName = "Personal";     RegName = "Personal" }
+    @{ Label = "Documents"; ShellName = "Personal";     RegName = "Personal" }
 )
 
 $OrdnerPlan = [System.Collections.ArrayList]::new()
-$antwortOrdner = Read-Host "  Bilder, Downloads und Dokumente auf eine andere Partition verschieben? (J/N)"
+$antwortOrdner = Read-Host "  Move Pictures, Downloads and Documents to another partition? (Y/N)"
 
-if ($antwortOrdner -match "^[jJyY]$") {
+if ($antwortOrdner -match "^[yY]$") {
     Write-Host ""
-    $zielEingabe = (Read-Host "  Zielordner (z.B. D:\Benutzer)").Trim().TrimEnd('\')
+    $zielEingabe = (Read-Host "  Target folder (e.g. D:\Users)").Trim().TrimEnd('\')
 
     if ($zielEingabe.Length -lt 2 -or $zielEingabe[1] -ne ':') {
-        Write-Host "  Ungueltiger Pfad, Verschiebung wird uebersprungen." -ForegroundColor Red
+        Write-Host "  Invalid path, skipping the move." -ForegroundColor Red
     } else {
         $laufwerk = $zielEingabe.Substring(0, 2)
 
         if (-not (Test-Path "$laufwerk\")) {
-            Write-Host "  Laufwerk $laufwerk existiert nicht, Verschiebung wird uebersprungen." -ForegroundColor Red
+            Write-Host "  Drive $laufwerk does not exist, skipping the move." -ForegroundColor Red
         } else {
             $GesamtGroesse = 0
 
@@ -97,7 +97,7 @@ if ($antwortOrdner -match "^[jJyY]$") {
                 $alterPfad = Get-BekannterOrdnerPfad $def.ShellName
 
                 if ([string]::IsNullOrWhiteSpace($alterPfad) -or -not (Test-Path $alterPfad)) {
-                    Write-Host "  [!!] $($def.Label): aktueller Pfad nicht ermittelbar, wird uebersprungen." -ForegroundColor Yellow
+                    Write-Host "  [!!] $($def.Label): could not determine current path, skipping." -ForegroundColor Yellow
                     continue
                 }
 
@@ -105,20 +105,20 @@ if ($antwortOrdner -match "^[jJyY]$") {
                 $neuerPfad = Join-Path $zielEingabe $leafName
 
                 if ($neuerPfad -eq $alterPfad) {
-                    Write-Host "  [OK] $($def.Label) ist bereits am Zielort." -ForegroundColor Green
+                    Write-Host "  [OK] $($def.Label) is already at the target location." -ForegroundColor Green
                     continue
                 }
 
-                # OneDrive verwaltet diese Ordner ggf. selbst - manuelles Verschieben
-                # kann mit der Synchronisierung kollidieren.
+                # OneDrive may manage these folders itself - moving them manually
+                # can conflict with its own synchronization.
                 if ($alterPfad -like "*OneDrive*") {
-                    Write-Host "  [!!] $($def.Label) wird aktuell ueber OneDrive gesichert:" -ForegroundColor Yellow
+                    Write-Host "  [!!] $($def.Label) is currently backed up via OneDrive:" -ForegroundColor Yellow
                     Write-Host "       $alterPfad" -ForegroundColor Yellow
-                    Write-Host "       Verschieben kann mit der OneDrive-Synchronisierung kollidieren." -ForegroundColor Yellow
-                    Write-Host "       Empfehlung: OneDrive-Ordnersicherung vorher deaktivieren." -ForegroundColor Yellow
-                    $weiterOneDrive = Read-Host "  '$($def.Label)' trotzdem verschieben? (j/N)"
-                    if ($weiterOneDrive -notmatch "^[jJyY]$") {
-                        Write-Host "  $($def.Label) wird uebersprungen." -ForegroundColor DarkGray
+                    Write-Host "       Moving it can conflict with OneDrive synchronization." -ForegroundColor Yellow
+                    Write-Host "       Recommendation: disable OneDrive folder backup first." -ForegroundColor Yellow
+                    $weiterOneDrive = Read-Host "  Move '$($def.Label)' anyway? (y/N)"
+                    if ($weiterOneDrive -notmatch "^[yY]$") {
+                        Write-Host "  Skipping $($def.Label)." -ForegroundColor DarkGray
                         Write-Host ""
                         continue
                     }
@@ -143,7 +143,7 @@ if ($antwortOrdner -match "^[jJyY]$") {
                 $freierPlatz = if ($vol) { $vol.SizeRemaining } else { $null }
 
                 Write-Host ""
-                Write-Host "  Geplante Verschiebung:" -ForegroundColor White
+                Write-Host "  Planned move:" -ForegroundColor White
                 Write-Host ""
                 foreach ($eintrag in $OrdnerPlan) {
                     $groesseGB = [math]::Round($eintrag.Groesse / 1GB, 2)
@@ -151,47 +151,47 @@ if ($antwortOrdner -match "^[jJyY]$") {
                         $eintrag.Label, $eintrag.AlterPfad, $eintrag.NeuerPfad, $groesseGB) -ForegroundColor Cyan
                 }
                 Write-Host ""
-                Write-Host ("  Benoetigter Speicherplatz gesamt: ~{0} GB" -f ([math]::Round($GesamtGroesse / 1GB, 2)))
+                Write-Host ("  Total disk space required: ~{0} GB" -f ([math]::Round($GesamtGroesse / 1GB, 2)))
 
                 if ($null -ne $freierPlatz -and ($GesamtGroesse * 1.1) -gt $freierPlatz) {
-                    Write-Host ("  [!!] Nicht genug freier Speicherplatz auf {0} (frei: {1} GB). Verschiebung wird uebersprungen." -f `
+                    Write-Host ("  [!!] Not enough free space on {0} (free: {1} GB). Skipping the move." -f `
                         $laufwerk, [math]::Round($freierPlatz / 1GB, 1)) -ForegroundColor Red
                     $OrdnerPlan.Clear()
                 }
             } else {
-                Write-Host "  Es gibt nichts zu verschieben." -ForegroundColor Yellow
+                Write-Host "  There is nothing to move." -ForegroundColor Yellow
             }
         }
     }
 }
 
-# ─── Uebersicht ─────────────────────────────────────────────────────────────
+# ─── Overview ────────────────────────────────────────────────────────────────
 
-Abschnitt "Verschiebungsuebersicht"
+Abschnitt "Move Overview"
 Write-Host ""
 
 if ($OrdnerPlan.Count -eq 0) {
-    Write-Host "  Es wurde nichts zur Ausfuehrung ausgewaehlt." -ForegroundColor Yellow
+    Write-Host "  Nothing was selected to run." -ForegroundColor Yellow
     Write-Host ""
-    Read-Host "  Enter zum Beenden"
+    Read-Host "  Enter to exit"
     exit 0
 }
 
-foreach ($eintrag in $OrdnerPlan) { Write-Host "  *  Ordner verschieben: $($eintrag.Label)" -ForegroundColor Red }
+foreach ($eintrag in $OrdnerPlan) { Write-Host "  *  Move folder: $($eintrag.Label)" -ForegroundColor Red }
 
 Write-Host ""
-$antwort = Read-Host "  Jetzt ausfuehren? (J/N)"
+$antwort = Read-Host "  Run this now? (Y/N)"
 
-if ($antwort -notmatch "^[jJyY]$") {
+if ($antwort -notmatch "^[yY]$") {
     Write-Host ""
-    Write-Host "  Abgebrochen." -ForegroundColor Yellow
+    Write-Host "  Cancelled." -ForegroundColor Yellow
     Write-Host ""
     exit 0
 }
 
-# ─── Ausfuehrung: Ordner verschieben ────────────────────────────────────────
+# ─── Execution: move folders ─────────────────────────────────────────────────
 
-Abschnitt "Benutzerordner werden verschoben"
+Abschnitt "Moving User Folders"
 Write-Host ""
 
 $Erfolg = [System.Collections.ArrayList]::new()
@@ -202,7 +202,7 @@ $ShellFolders     = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Sh
 $mindEinErfolg    = $false
 
 foreach ($eintrag in $OrdnerPlan) {
-    Write-Host "  Verschiebe $($eintrag.Label) ..." -ForegroundColor Cyan
+    Write-Host "  Moving $($eintrag.Label) ..." -ForegroundColor Cyan
     New-Item -ItemType Directory -Path $eintrag.NeuerPfad -Force | Out-Null
 
     robocopy $eintrag.AlterPfad $eintrag.NeuerPfad /E /MOVE /R:1 /W:1 /NFL /NDL /NJH /NJS | Out-Null
@@ -211,46 +211,46 @@ foreach ($eintrag in $OrdnerPlan) {
     if ($rcCode -lt 8) {
         Set-ItemProperty -Path $UserShellFolders -Name $eintrag.RegName -Value $eintrag.NeuerPfad -ErrorAction SilentlyContinue
         Set-ItemProperty -Path $ShellFolders     -Name $eintrag.RegName -Value $eintrag.NeuerPfad -ErrorAction SilentlyContinue
-        Write-Host "  [OK] $($eintrag.Label) erfolgreich verschoben" -ForegroundColor Green
-        [void]$Erfolg.Add("Ordner: $($eintrag.Label)")
+        Write-Host "  [OK] $($eintrag.Label) moved successfully" -ForegroundColor Green
+        [void]$Erfolg.Add("Folder: $($eintrag.Label)")
         $mindEinErfolg = $true
     } else {
-        Write-Host "  [!!] $($eintrag.Label) fehlgeschlagen  (robocopy-Code: $rcCode)" -ForegroundColor Red
-        [void]$Fehler.Add("Ordner: $($eintrag.Label)")
+        Write-Host "  [!!] $($eintrag.Label) failed  (robocopy code: $rcCode)" -ForegroundColor Red
+        [void]$Fehler.Add("Folder: $($eintrag.Label)")
     }
     Write-Host ""
 }
 
 if ($mindEinErfolg) {
-    Write-Host "  Starte Explorer neu, damit die neuen Pfade uebernommen werden ..." -ForegroundColor DarkGray
+    Write-Host "  Restarting Explorer so the new paths take effect ..." -ForegroundColor DarkGray
     Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 1
     Start-Process explorer.exe
     Write-Host ""
 }
 
-# ─── Abschlussbericht ───────────────────────────────────────────────────────
+# ─── Final report ────────────────────────────────────────────────────────────
 
-Abschnitt "Abschlussbericht"
+Abschnitt "Final Report"
 Write-Host ""
 
 if ($Erfolg.Count -gt 0) {
-    Write-Host "  Erfolgreich:" -ForegroundColor Green
+    Write-Host "  Successful:" -ForegroundColor Green
     foreach ($n in $Erfolg) { Write-Host "    [OK] $n" -ForegroundColor Green }
     Write-Host ""
 }
 
 if ($Fehler.Count -gt 0) {
-    Write-Host "  Fehlgeschlagen:" -ForegroundColor Red
+    Write-Host "  Failed:" -ForegroundColor Red
     foreach ($n in $Fehler) { Write-Host "    [!!] $n" -ForegroundColor Red }
     Write-Host ""
 }
 
 if ($Fehler.Count -eq 0) {
-    Write-Host "  Alles erfolgreich abgeschlossen!" -ForegroundColor Green
+    Write-Host "  Everything completed successfully!" -ForegroundColor Green
 }
 
 Write-Host ""
 Write-Host ("  " + ("-" * 56)) -ForegroundColor DarkGray
 Write-Host ""
-Read-Host "  Enter zum Beenden"
+Read-Host "  Enter to exit"

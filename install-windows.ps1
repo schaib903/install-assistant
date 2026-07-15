@@ -1,11 +1,11 @@
 #Requires -Version 5.1
-# Freeware Installationsassistent - Windows
-# Benoetigt: winget (Windows Package Manager)
+# Freeware Install Assistant - Windows
+# Requires: winget (Windows Package Manager)
 
 $ProgressPreference    = "SilentlyContinue"
 $ErrorActionPreference = "Continue"
 
-# ─── Hilfsfunktionen ────────────────────────────────────────────────────────
+# ─── Helper functions ───────────────────────────────────────────────────────
 
 function Abschnitt([string]$Titel) {
     Write-Host ""
@@ -30,34 +30,34 @@ function Winget-Installiere([string]$ID) {
     return $LASTEXITCODE
 }
 
-# ─── Voraussetzungen ────────────────────────────────────────────────────────
+# ─── Prerequisites ──────────────────────────────────────────────────────────
 
 if ($env:OS -ne "Windows_NT") {
-    Write-Host "FEHLER: Dieses Skript ist nur fuer Windows." -ForegroundColor Red
+    Write-Host "ERROR: This script is Windows-only." -ForegroundColor Red
     exit 1
 }
 if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
     Write-Host ""
-    Write-Host "  FEHLER: winget nicht gefunden." -ForegroundColor Red
-    Write-Host "  Bitte installieren: https://aka.ms/getwinget" -ForegroundColor Yellow
+    Write-Host "  ERROR: winget not found." -ForegroundColor Red
+    Write-Host "  Please install: https://aka.ms/getwinget" -ForegroundColor Yellow
     Write-Host ""
     exit 1
 }
 
-# ─── Kopfzeile ──────────────────────────────────────────────────────────────
+# ─── Header ──────────────────────────────────────────────────────────────────
 
 Clear-Host
 Write-Host ""
 Write-Host "  +------------------------------------------------------------+" -ForegroundColor Cyan
-Write-Host "  |      Freeware Installationsassistent  -  Windows           |" -ForegroundColor Cyan
+Write-Host "  |      Freeware Install Assistant  -  Windows                |" -ForegroundColor Cyan
 Write-Host "  +------------------------------------------------------------+" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  Plattform: " -NoNewline
+Write-Host "  Platform: " -NoNewline
 Write-Host "Windows  (winget)" -ForegroundColor Green
 
-# ─── Systeminformationen ────────────────────────────────────────────────────
+# ─── System information ─────────────────────────────────────────────────────
 
-Abschnitt "Systeminformationen"
+Abschnitt "System Information"
 Write-Host ""
 try {
     $os  = Get-CimInstance Win32_OperatingSystem
@@ -68,10 +68,10 @@ try {
     Write-Host ("  {0,-12} {1} GB" -f "RAM:",    $ram)
     Write-Host ("  {0,-12} {1}" -f "CPU:",       $cpu)
 } catch {
-    Write-Host "  Systeminfo nicht verfuegbar." -ForegroundColor DarkYellow
+    Write-Host "  System info not available." -ForegroundColor DarkYellow
 }
 
-# ─── Programme ──────────────────────────────────────────────────────────────
+# ─── Programs ────────────────────────────────────────────────────────────────
 
 $Programme = @(
     @{
@@ -157,27 +157,27 @@ $PythonIDs = @{
     "3.13" = "Python.Python.3.13"
 }
 
-# ─── Installationsstatus pruefen ────────────────────────────────────────────
+# ─── Check installation status ──────────────────────────────────────────────
 
-Abschnitt "Installationsstatus"
+Abschnitt "Installation Status"
 Write-Host ""
 
 $Fehlend = [System.Collections.ArrayList]::new()
 
 foreach ($p in $Programme) {
-    Write-Host "  Pruefe $($p.Name) ..." -NoNewline -ForegroundColor DarkGray
+    Write-Host "  Checking $($p.Name) ..." -NoNewline -ForegroundColor DarkGray
     $ok = (Pruefe-Pfade $p.Pfade) -or (Pruefe-Winget $p.ID)
     if ($ok) {
-        Write-Host "`r  [OK] $($p.Name.PadRight(24)) installiert          " -ForegroundColor Green
+        Write-Host "`r  [OK] $($p.Name.PadRight(24)) installed             " -ForegroundColor Green
     } else {
-        Write-Host "`r  [--] $($p.Name.PadRight(24)) nicht installiert     " -ForegroundColor Red
+        Write-Host "`r  [--] $($p.Name.PadRight(24)) not installed         " -ForegroundColor Red
         [void]$Fehlend.Add($p)
     }
 }
 
-# Python-Versionen pruefen
+# Check Python versions
 Write-Host ""
-Write-Host "  Python-Versionen:" -ForegroundColor White
+Write-Host "  Python versions:" -ForegroundColor White
 Write-Host ""
 
 $PyOk    = [System.Collections.ArrayList]::new()
@@ -186,13 +186,13 @@ $PyFehlt = [System.Collections.ArrayList]::new()
 foreach ($ver in $PythonVersionen) {
     $gefunden = $false
 
-    # Schnell-Check via Python-Launcher (py.exe)
+    # Quick check via the Python launcher (py.exe)
     if (-not $gefunden -and (Get-Command py -ErrorAction SilentlyContinue)) {
         $pyOut = (& py --list 2>&1) -join " "
         if ($pyOut -match $ver) { $gefunden = $true }
     }
 
-    # Fallback: winget-Liste
+    # Fallback: winget list
     if (-not $gefunden) {
         $gefunden = Pruefe-Winget $PythonIDs[$ver]
     }
@@ -206,29 +206,29 @@ foreach ($ver in $PythonVersionen) {
     }
 }
 
-# ─── Auswahl der zu installierenden Programme ──────────────────────────────
+# ─── Select programs to install ─────────────────────────────────────────────
 
 $AusgewaehlteProgramme = [System.Collections.ArrayList]::new()
 
 if ($Fehlend.Count -gt 0) {
-    Abschnitt "Auswahl der Programme"
+    Abschnitt "Select Programs"
     Write-Host ""
-    Write-Host "  Folgende Programme sind noch nicht installiert:" -ForegroundColor White
+    Write-Host "  The following programs are not yet installed:" -ForegroundColor White
     Write-Host ""
     for ($i = 0; $i -lt $Fehlend.Count; $i++) {
         Write-Host ("    [{0}]  {1}" -f ($i + 1), $Fehlend[$i].Name) -ForegroundColor Cyan
     }
     Write-Host ""
-    Write-Host "  Eingabe: Nummern durch Komma getrennt (z.B. 1,3), 'alle' oder 'keine'" -ForegroundColor DarkGray
+    Write-Host "  Input: comma-separated numbers (e.g. 1,3), 'all' or 'none'" -ForegroundColor DarkGray
     Write-Host ""
 
     :programmauswahl while ($true) {
-        $eingabe = (Read-Host "  Auswahl").Trim()
+        $eingabe = (Read-Host "  Selection").Trim()
 
-        if ($eingabe -eq "" -or $eingabe -match "^(keine|nein|n)$") {
+        if ($eingabe -eq "" -or $eingabe -match "^(none|no|n)$") {
             break programmauswahl
         }
-        if ($eingabe -match "^(alle|a)$") {
+        if ($eingabe -match "^(all|a)$") {
             $AusgewaehlteProgramme.AddRange($Fehlend)
             break programmauswahl
         }
@@ -241,7 +241,7 @@ if ($Fehlend.Count -gt 0) {
             if ($n -match "^\d+$" -and [int]$n -ge 1 -and [int]$n -le $Fehlend.Count) {
                 [void]$auswahl.Add($Fehlend[[int]$n - 1])
             } else {
-                Write-Host "  Ungueltige Eingabe: '$n'" -ForegroundColor Red
+                Write-Host "  Invalid input: '$n'" -ForegroundColor Red
                 $gueltig = $false
                 break
             }
@@ -254,26 +254,26 @@ if ($Fehlend.Count -gt 0) {
     }
 } else {
     Write-Host ""
-    Write-Host "  Alle Programme aus der Liste sind bereits installiert." -ForegroundColor Green
+    Write-Host "  All programs from the list are already installed." -ForegroundColor Green
 }
 
-# Python-Auswahl
+# Python selection
 $GewuenshtePython = $null
 Write-Host ""
 
 if ($PyFehlt.Count -gt 0) {
-    Write-Host "  Zur Installation verfuegbar:" -ForegroundColor White
+    Write-Host "  Available to install:" -ForegroundColor White
     for ($i = 0; $i -lt $PythonVersionen.Count; $i++) {
         $v = $PythonVersionen[$i]
         if ($PyFehlt -contains $v) {
             Write-Host "    [$($i + 1)]  Python $v" -ForegroundColor Cyan
         }
     }
-    Write-Host "    [0]  Kein Python installieren" -ForegroundColor DarkGray
+    Write-Host "    [0]  Do not install Python" -ForegroundColor DarkGray
     Write-Host ""
 
     :pythonauswahl while ($true) {
-        $eingabe = Read-Host "  Auswahl (Nummer eingeben)"
+        $eingabe = Read-Host "  Selection (enter a number)"
         if ($eingabe -eq "0" -or $eingabe -eq "") { break pythonauswahl }
 
         if ($eingabe -match "^\d+$") {
@@ -284,80 +284,80 @@ if ($PyFehlt.Count -gt 0) {
                     $GewuenshtePython = $v
                     break pythonauswahl
                 } elseif ($PyOk -contains $v) {
-                    Write-Host "  Python $v ist bereits installiert." -ForegroundColor Yellow
+                    Write-Host "  Python $v is already installed." -ForegroundColor Yellow
                 } else {
-                    Write-Host "  Ungueltige Auswahl." -ForegroundColor Red
+                    Write-Host "  Invalid selection." -ForegroundColor Red
                 }
             } else {
-                Write-Host "  Ungueltige Nummer." -ForegroundColor Red
+                Write-Host "  Invalid number." -ForegroundColor Red
             }
         } else {
-            Write-Host "  Bitte eine Zahl eingeben." -ForegroundColor Red
+            Write-Host "  Please enter a number." -ForegroundColor Red
         }
     }
 } else {
-    Write-Host "  Alle Python-Versionen sind bereits installiert." -ForegroundColor Green
+    Write-Host "  All Python versions are already installed." -ForegroundColor Green
 }
 
-# ─── Zusaetzliche Freeware ──────────────────────────────────────────────────
+# ─── Additional freeware ────────────────────────────────────────────────────
 
-Abschnitt "Zusaetzliche Freeware"
+Abschnitt "Additional Freeware"
 Write-Host ""
 
 $ZusatzProgramme = [System.Collections.ArrayList]::new()
-$antwortZusatz = Read-Host "  Weitere Freeware installieren, die nicht in der Liste steht? (J/N)"
+$antwortZusatz = Read-Host "  Install additional freeware that isn't on the list? (Y/N)"
 
-if ($antwortZusatz -match "^[jJyY]$") {
+if ($antwortZusatz -match "^[yY]$") {
     Write-Host ""
-    Write-Host "  Winget-ID vorher mit 'winget search <Name>' ermitteln." -ForegroundColor DarkGray
-    Write-Host "  Leere Eingabe beim Programmnamen beendet die Erfassung." -ForegroundColor DarkGray
+    Write-Host "  Look up the winget ID first with 'winget search <name>'." -ForegroundColor DarkGray
+    Write-Host "  An empty program name ends the entry." -ForegroundColor DarkGray
     Write-Host ""
     while ($true) {
-        $zName = Read-Host "  Programmname"
+        $zName = Read-Host "  Program name"
         if ([string]::IsNullOrWhiteSpace($zName)) { break }
 
-        $zID = Read-Host "  Winget-ID fuer '$zName'"
+        $zID = Read-Host "  Winget ID for '$zName'"
         if ([string]::IsNullOrWhiteSpace($zID)) {
-            Write-Host "  Keine ID angegeben, '$zName' wird uebersprungen." -ForegroundColor Yellow
+            Write-Host "  No ID given, skipping '$zName'." -ForegroundColor Yellow
             Write-Host ""
             continue
         }
 
         [void]$ZusatzProgramme.Add(@{ Name = $zName; ID = $zID })
-        Write-Host "  [+] '$zName' ($zID) wird zur Installation vorgemerkt" -ForegroundColor Green
+        Write-Host "  [+] '$zName' ($zID) queued for installation" -ForegroundColor Green
         Write-Host ""
     }
 }
 
-# ─── Installationsuebersicht ────────────────────────────────────────────────
+# ─── Installation overview ──────────────────────────────────────────────────
 
-Abschnitt "Installationsuebersicht"
+Abschnitt "Installation Overview"
 Write-Host ""
 
 if ($AusgewaehlteProgramme.Count -eq 0 -and $null -eq $GewuenshtePython -and $ZusatzProgramme.Count -eq 0) {
-    Write-Host "  Es wurde nichts zur Installation ausgewaehlt." -ForegroundColor Yellow
+    Write-Host "  Nothing was selected for installation." -ForegroundColor Yellow
     Write-Host ""
-    Read-Host "  Enter zum Beenden"
+    Read-Host "  Enter to exit"
     exit 0
 }
 
 foreach ($p in $AusgewaehlteProgramme) { Write-Host "  *  $($p.Name)" -ForegroundColor Red }
 if ($null -ne $GewuenshtePython)       { Write-Host "  *  Python $GewuenshtePython" -ForegroundColor Red }
-foreach ($z in $ZusatzProgramme)       { Write-Host "  *  $($z.Name)  (zusaetzlich)" -ForegroundColor Red }
+foreach ($z in $ZusatzProgramme)       { Write-Host "  *  $($z.Name)  (additional)" -ForegroundColor Red }
 
 Write-Host ""
-$antwort = Read-Host "  Diese Programme jetzt installieren? (J/N)"
+$antwort = Read-Host "  Install these programs now? (Y/N)"
 
-if ($antwort -notmatch "^[jJyY]$") {
+if ($antwort -notmatch "^[yY]$") {
     Write-Host ""
-    Write-Host "  Installation abgebrochen." -ForegroundColor Yellow
+    Write-Host "  Installation cancelled." -ForegroundColor Yellow
     Write-Host ""
     exit 0
 }
 
-# ─── Installation ───────────────────────────────────────────────────────────
+# ─── Installation ────────────────────────────────────────────────────────────
 
-Abschnitt "Installation laeuft"
+Abschnitt "Installation Running"
 Write-Host ""
 
 $Erfolg  = [System.Collections.ArrayList]::new()
@@ -365,13 +365,13 @@ $Fehler  = [System.Collections.ArrayList]::new()
 $OkCodes = @(0, -1978335189, -1978335106, 3010)
 
 foreach ($p in $AusgewaehlteProgramme) {
-    Write-Host "  Installiere $($p.Name) ..." -ForegroundColor Cyan
+    Write-Host "  Installing $($p.Name) ..." -ForegroundColor Cyan
     $code = Winget-Installiere $p.ID
     if ($OkCodes -contains $code) {
-        Write-Host "  [OK] $($p.Name) erfolgreich installiert" -ForegroundColor Green
+        Write-Host "  [OK] $($p.Name) installed successfully" -ForegroundColor Green
         [void]$Erfolg.Add($p.Name)
     } else {
-        Write-Host "  [!!] $($p.Name) fehlgeschlagen  (Code: $code)" -ForegroundColor Red
+        Write-Host "  [!!] $($p.Name) failed  (code: $code)" -ForegroundColor Red
         [void]$Fehler.Add($p.Name)
     }
     Write-Host ""
@@ -379,56 +379,56 @@ foreach ($p in $AusgewaehlteProgramme) {
 
 if ($null -ne $GewuenshtePython) {
     $pyID = $PythonIDs[$GewuenshtePython]
-    Write-Host "  Installiere Python $GewuenshtePython ..." -ForegroundColor Cyan
+    Write-Host "  Installing Python $GewuenshtePython ..." -ForegroundColor Cyan
     $code = Winget-Installiere $pyID
     if ($OkCodes -contains $code) {
-        Write-Host "  [OK] Python $GewuenshtePython erfolgreich installiert" -ForegroundColor Green
+        Write-Host "  [OK] Python $GewuenshtePython installed successfully" -ForegroundColor Green
         [void]$Erfolg.Add("Python $GewuenshtePython")
     } else {
-        Write-Host "  [!!] Python $GewuenshtePython fehlgeschlagen  (Code: $code)" -ForegroundColor Red
+        Write-Host "  [!!] Python $GewuenshtePython failed  (code: $code)" -ForegroundColor Red
         [void]$Fehler.Add("Python $GewuenshtePython")
     }
     Write-Host ""
 }
 
 foreach ($z in $ZusatzProgramme) {
-    Write-Host "  Installiere $($z.Name) ..." -ForegroundColor Cyan
+    Write-Host "  Installing $($z.Name) ..." -ForegroundColor Cyan
     $code = Winget-Installiere $z.ID
     if ($OkCodes -contains $code) {
-        Write-Host "  [OK] $($z.Name) erfolgreich installiert" -ForegroundColor Green
+        Write-Host "  [OK] $($z.Name) installed successfully" -ForegroundColor Green
         [void]$Erfolg.Add($z.Name)
     } else {
-        Write-Host "  [!!] $($z.Name) fehlgeschlagen  (Code: $code)" -ForegroundColor Red
+        Write-Host "  [!!] $($z.Name) failed  (code: $code)" -ForegroundColor Red
         [void]$Fehler.Add($z.Name)
     }
     Write-Host ""
 }
 
-# ─── Abschlussbericht ───────────────────────────────────────────────────────
+# ─── Final report ────────────────────────────────────────────────────────────
 
-Abschnitt "Abschlussbericht"
+Abschnitt "Final Report"
 Write-Host ""
 
 if ($Erfolg.Count -gt 0) {
-    Write-Host "  Erfolgreich installiert:" -ForegroundColor Green
+    Write-Host "  Installed successfully:" -ForegroundColor Green
     foreach ($n in $Erfolg) { Write-Host "    [OK] $n" -ForegroundColor Green }
     Write-Host ""
 }
 
 if ($Fehler.Count -gt 0) {
-    Write-Host "  Fehlgeschlagen:" -ForegroundColor Red
+    Write-Host "  Failed:" -ForegroundColor Red
     foreach ($n in $Fehler) { Write-Host "    [!!] $n" -ForegroundColor Red }
     Write-Host ""
-    Write-Host "  Tipp: Skript als Administrator ausfuehren oder" -ForegroundColor Yellow
-    Write-Host "        Internetverbindung pruefen." -ForegroundColor Yellow
+    Write-Host "  Tip: run the script as Administrator or" -ForegroundColor Yellow
+    Write-Host "       check your internet connection." -ForegroundColor Yellow
     Write-Host ""
 }
 
 if ($Fehler.Count -eq 0) {
-    Write-Host "  Alle Installationen erfolgreich abgeschlossen!" -ForegroundColor Green
+    Write-Host "  All installations completed successfully!" -ForegroundColor Green
 }
 
 Write-Host ""
 Write-Host ("  " + ("-" * 56)) -ForegroundColor DarkGray
 Write-Host ""
-Read-Host "  Enter zum Beenden"
+Read-Host "  Enter to exit"

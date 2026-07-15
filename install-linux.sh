@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Freeware Installationsassistent - Linux (Debian/Ubuntu)
-# Benoetigt: apt, sudo
-# Hinweis: Datei muss Unix-Zeilenenden (LF) haben. Unter Windows:
-#   Konvertierung mit: dos2unix install_assist_linux.sh
-#   Oder: sed -i 's/\r//' install_assist_linux.sh
+# Freeware Install Assistant - Linux (Debian/Ubuntu)
+# Requires: apt, sudo
+# Note: file must use Unix line endings (LF). On Windows:
+#   Convert with: dos2unix install-linux.sh
+#   Or: sed -i 's/\r//' install-linux.sh
 
-# ─── Farben ─────────────────────────────────────────────────────────────────
+# ─── Colors ───────────────────────────────────────────────────────────────
 
 ROT='\033[0;31m'
 GRUEN='\033[0;32m'
@@ -15,7 +15,7 @@ WEISS='\033[1;37m'
 GRAU='\033[0;90m'
 RESET='\033[0m'
 
-# ─── Hilfsfunktionen ────────────────────────────────────────────────────────
+# ─── Helper functions ───────────────────────────────────────────────────────
 
 abschnitt() {
     echo ""
@@ -31,39 +31,39 @@ paket_installiert() {
     dpkg -l "$1" 2>/dev/null | grep -q "^ii"
 }
 
-# ─── Voraussetzungen ────────────────────────────────────────────────────────
+# ─── Prerequisites ──────────────────────────────────────────────────────────
 
 if [[ "$(uname -s)" != "Linux" ]]; then
-    echo -e "${ROT}FEHLER: Dieses Skript ist nur fuer Linux geeignet.${RESET}"
+    echo -e "${ROT}ERROR: This script is Linux-only.${RESET}"
     exit 1
 fi
 
 if ! command -v apt-get &>/dev/null; then
-    echo -e "${ROT}FEHLER: apt-get nicht gefunden. Benoetigt Debian/Ubuntu.${RESET}"
+    echo -e "${ROT}ERROR: apt-get not found. Requires Debian/Ubuntu.${RESET}"
     exit 1
 fi
 
 if ! grep -qiE 'ubuntu|debian|linuxmint|pop' /etc/os-release 2>/dev/null; then
-    echo -e "${GELB}WARNUNG: Moeglichweise kein Debian/Ubuntu-System erkannt.${RESET}"
-    echo -e "${GELB}         Fortfahren auf eigenes Risiko.${RESET}"
+    echo -e "${GELB}WARNING: This may not be a Debian/Ubuntu system.${RESET}"
+    echo -e "${GELB}         Continue at your own risk.${RESET}"
 fi
 
-# ─── Kopfzeile ──────────────────────────────────────────────────────────────
+# ─── Header ──────────────────────────────────────────────────────────────────
 
 clear
 echo ""
 echo -e "  ${CYAN}+──────────────────────────────────────────────────────────+${RESET}"
-echo -e "  ${CYAN}│       Freeware Installationsassistent  ·  Linux           │${RESET}"
+echo -e "  ${CYAN}│       Freeware Install Assistant  ·  Linux                │${RESET}"
 echo -e "  ${CYAN}+──────────────────────────────────────────────────────────+${RESET}"
 echo ""
-echo -e "  Plattform: ${GRUEN}Linux  (apt)${RESET}"
+echo -e "  Platform: ${GRUEN}Linux  (apt)${RESET}"
 
-# ─── Systeminformationen ────────────────────────────────────────────────────
+# ─── System information ─────────────────────────────────────────────────────
 
-abschnitt "Systeminformationen"
+abschnitt "System Information"
 echo ""
 
-HOSTNAME_V=$(hostname 2>/dev/null || echo "unbekannt")
+HOSTNAME_V=$(hostname 2>/dev/null || echo "unknown")
 OS_V=$(grep PRETTY_NAME /etc/os-release 2>/dev/null | cut -d'"' -f2 || echo "Linux")
 RAM_V=$(awk '/MemTotal/ {printf "%.1f GB", $2/1024/1024}' /proc/meminfo 2>/dev/null || echo "n/a")
 CPU_V=$(grep "model name" /proc/cpuinfo 2>/dev/null | head -1 | cut -d':' -f2 | xargs || echo "n/a")
@@ -73,13 +73,13 @@ printf "  %-12s %s\n" "System:"    "$OS_V"
 printf "  %-12s %s\n" "RAM:"       "$RAM_V"
 printf "  %-12s %s\n" "CPU:"       "$CPU_V"
 
-# ─── Programmdefinitionen ───────────────────────────────────────────────────
+# ─── Program definitions ────────────────────────────────────────────────────
 # Format: PROG_NAMEN[i], PROG_CMDS[i], PROG_PAKETE[i], PROG_SONDER[i]
-# PROG_SONDER: "" = normales apt, "chrome" = Google Chrome, "vscode" = VS Code,
+# PROG_SONDER: "" = plain apt, "chrome" = Google Chrome, "vscode" = VS Code,
 #              "brave" = Brave Browser
-# Hinweis: Adobe Acrobat Reader wird hier bewusst nicht angeboten - Adobe
-# stellt seit Jahren keinen offiziellen Reader fuer Linux mehr bereit
-# (nur Windows, siehe install_assist_windows.ps1).
+# Note: Adobe Acrobat Reader is deliberately not offered here - Adobe has not
+# shipped an official Linux reader for years (Windows only, see
+# install-windows.ps1).
 
 PROG_NAMEN=("Firefox" "Google Chrome" "Brave Browser" "VLC" "7-Zip" "VS Code" "Git")
 PROG_CMDS=( "firefox" "google-chrome" "brave-browser"  "vlc" "7z"   "code"    "git")
@@ -88,9 +88,9 @@ PROG_SONDER=("" "chrome" "brave" "" "" "vscode" "")
 
 PYTHON_VERSIONEN=("3.10" "3.11" "3.12" "3.13")
 
-# ─── Installationsstatus pruefen ────────────────────────────────────────────
+# ─── Check installation status ──────────────────────────────────────────────
 
-abschnitt "Installationsstatus"
+abschnitt "Installation Status"
 echo ""
 
 FEHLENDE_NAMEN=()
@@ -100,20 +100,20 @@ FEHLENDE_SONDER=()
 for i in "${!PROG_NAMEN[@]}"; do
     name="${PROG_NAMEN[$i]}"
     cmd="${PROG_CMDS[$i]}"
-    printf "  Pruefe %-22s ..." "$name"
+    printf "  Checking %-22s ..." "$name"
     if ist_installiert "$cmd" || paket_installiert "${PROG_PAKETE[$i]}"; then
-        printf "\r  [✅] %-22s installiert          \n" "$name"
+        printf "\r  [✅] %-22s installed            \n" "$name"
     else
-        printf "\r  [❌] %-22s nicht installiert    \n" "$name"
+        printf "\r  [❌] %-22s not installed         \n" "$name"
         FEHLENDE_NAMEN+=("$name")
         FEHLENDE_PAKETE+=("${PROG_PAKETE[$i]}")
         FEHLENDE_SONDER+=("${PROG_SONDER[$i]}")
     fi
 done
 
-# Python-Versionen pruefen
+# Check Python versions
 echo ""
-echo -e "  ${WEISS}Python-Versionen:${RESET}"
+echo -e "  ${WEISS}Python versions:${RESET}"
 echo ""
 
 PY_OK=()
@@ -129,33 +129,33 @@ for ver in "${PYTHON_VERSIONEN[@]}"; do
     fi
 done
 
-# ─── Auswahl der zu installierenden Programme ──────────────────────────────
+# ─── Select programs to install ─────────────────────────────────────────────
 
 AUSGEWAEHLT_NAMEN=()
 AUSGEWAEHLT_PAKETE=()
 AUSGEWAEHLT_SONDER=()
 
 if [[ ${#FEHLENDE_NAMEN[@]} -gt 0 ]]; then
-    abschnitt "Auswahl der Programme"
+    abschnitt "Select Programs"
     echo ""
-    echo -e "  Folgende Programme sind noch nicht installiert:"
+    echo -e "  The following programs are not yet installed:"
     echo ""
     for i in "${!FEHLENDE_NAMEN[@]}"; do
         echo -e "    ${CYAN}[$((i+1))]  ${FEHLENDE_NAMEN[$i]}${RESET}"
     done
     echo ""
-    echo -e "  ${GRAU}Eingabe: Nummern durch Komma getrennt (z.B. 1,3), 'alle' oder 'keine'${RESET}"
+    echo -e "  ${GRAU}Input: comma-separated numbers (e.g. 1,3), 'all' or 'none'${RESET}"
     echo ""
 
     while true; do
-        read -rp "  Auswahl: " eingabe
+        read -rp "  Selection: " eingabe
         eingabe="$(echo "$eingabe" | xargs)"
 
-        if [[ -z "$eingabe" || "$eingabe" =~ ^(keine|nein|n)$ ]]; then
+        if [[ -z "$eingabe" || "$eingabe" =~ ^(none|no|n)$ ]]; then
             break
         fi
 
-        if [[ "$eingabe" =~ ^(alle|a)$ ]]; then
+        if [[ "$eingabe" =~ ^(all|a)$ ]]; then
             AUSGEWAEHLT_NAMEN=("${FEHLENDE_NAMEN[@]}")
             AUSGEWAEHLT_PAKETE=("${FEHLENDE_PAKETE[@]}")
             AUSGEWAEHLT_SONDER=("${FEHLENDE_SONDER[@]}")
@@ -176,7 +176,7 @@ if [[ ${#FEHLENDE_NAMEN[@]} -gt 0 ]]; then
                 tmp_pakete+=("${FEHLENDE_PAKETE[$idx]}")
                 tmp_sonder+=("${FEHLENDE_SONDER[$idx]}")
             else
-                echo -e "  ${ROT}Ungueltige Eingabe: '$n'${RESET}"
+                echo -e "  ${ROT}Invalid input: '$n'${RESET}"
                 gueltig=false
                 break
             fi
@@ -191,15 +191,15 @@ if [[ ${#FEHLENDE_NAMEN[@]} -gt 0 ]]; then
     done
 else
     echo ""
-    echo -e "  ${GRUEN}Alle Programme aus der Liste sind bereits installiert.${RESET}"
+    echo -e "  ${GRUEN}All programs from the list are already installed.${RESET}"
 fi
 
-# Python-Auswahl
+# Python selection
 GEWUENSCHTE_PYTHON=""
 echo ""
 
 if [[ ${#PY_FEHLT[@]} -gt 0 ]]; then
-    echo -e "  Zur Installation verfuegbar:"
+    echo -e "  Available to install:"
     for i in "${!PYTHON_VERSIONEN[@]}"; do
         ver="${PYTHON_VERSIONEN[$i]}"
         for f in "${PY_FEHLT[@]}"; do
@@ -209,11 +209,11 @@ if [[ ${#PY_FEHLT[@]} -gt 0 ]]; then
             fi
         done
     done
-    echo -e "    ${GRAU}[0]  Kein Python installieren${RESET}"
+    echo -e "    ${GRAU}[0]  Do not install Python${RESET}"
     echo ""
 
     while true; do
-        read -rp "  Auswahl (Nummer eingeben): " auswahl
+        read -rp "  Selection (enter a number): " auswahl
         [[ "$auswahl" == "0" || -z "$auswahl" ]] && break
 
         if [[ "$auswahl" =~ ^[0-9]+$ ]] && \
@@ -226,56 +226,56 @@ if [[ ${#PY_FEHLT[@]} -gt 0 ]]; then
                 GEWUENSCHTE_PYTHON="$ver"
                 break
             else
-                echo -e "  ${GELB}Python ${ver} ist bereits installiert.${RESET}"
+                echo -e "  ${GELB}Python ${ver} is already installed.${RESET}"
             fi
         else
-            echo -e "  ${ROT}Ungueltige Eingabe. Bitte eine Zahl eingeben.${RESET}"
+            echo -e "  ${ROT}Invalid input. Please enter a number.${RESET}"
         fi
     done
 else
-    echo -e "  ${GRUEN}Alle Python-Versionen sind bereits installiert.${RESET}"
+    echo -e "  ${GRUEN}All Python versions are already installed.${RESET}"
 fi
 
-# ─── Zusaetzliche Freeware ──────────────────────────────────────────────────
+# ─── Additional freeware ────────────────────────────────────────────────────
 
-abschnitt "Zusaetzliche Freeware"
+abschnitt "Additional Freeware"
 echo ""
 
 ZUSATZ_NAMEN=()
 ZUSATZ_PAKETE=()
 
-read -rp "  Weitere Freeware installieren, die nicht in der Liste steht? (J/N): " antwort_zusatz
+read -rp "  Install additional freeware that isn't on the list? (Y/N): " antwort_zusatz
 echo ""
 
-if [[ "$antwort_zusatz" =~ ^[jJyY]$ ]]; then
-    echo -e "  ${GRAU}apt-Paketname vorher mit 'apt-cache search <Name>' ermitteln.${RESET}"
-    echo -e "  ${GRAU}Leere Eingabe beim Programmnamen beendet die Erfassung.${RESET}"
+if [[ "$antwort_zusatz" =~ ^[yY]$ ]]; then
+    echo -e "  ${GRAU}Look up the apt package name first with 'apt-cache search <name>'.${RESET}"
+    echo -e "  ${GRAU}An empty program name ends the entry.${RESET}"
     echo ""
     while true; do
-        read -rp "  Programmname: " z_name
+        read -rp "  Program name: " z_name
         [[ -z "$z_name" ]] && break
 
-        read -rp "  apt-Paketname fuer '$z_name': " z_paket
+        read -rp "  apt package name for '$z_name': " z_paket
         if [[ -z "$z_paket" ]]; then
-            echo -e "  ${GELB}Kein Paketname angegeben, '$z_name' wird uebersprungen.${RESET}"
+            echo -e "  ${GELB}No package name given, skipping '$z_name'.${RESET}"
             echo ""
             continue
         fi
 
         ZUSATZ_NAMEN+=("$z_name")
         ZUSATZ_PAKETE+=("$z_paket")
-        echo -e "  ${GRUEN}[+] '$z_name' ($z_paket) wird zur Installation vorgemerkt${RESET}"
+        echo -e "  ${GRUEN}[+] '$z_name' ($z_paket) queued for installation${RESET}"
         echo ""
     done
 fi
 
-# ─── Installationsuebersicht ────────────────────────────────────────────────
+# ─── Installation overview ──────────────────────────────────────────────────
 
-abschnitt "Installationsuebersicht"
+abschnitt "Installation Overview"
 echo ""
 
 if [[ ${#AUSGEWAEHLT_NAMEN[@]} -eq 0 && -z "$GEWUENSCHTE_PYTHON" && ${#ZUSATZ_NAMEN[@]} -eq 0 ]]; then
-    echo -e "  ${GELB}Es wurde nichts zur Installation ausgewaehlt.${RESET}"
+    echo -e "  ${GELB}Nothing was selected for installation.${RESET}"
     echo ""
     exit 0
 fi
@@ -285,31 +285,31 @@ for name in "${AUSGEWAEHLT_NAMEN[@]}"; do
 done
 [[ -n "$GEWUENSCHTE_PYTHON" ]] && echo -e "  ${ROT}•  Python $GEWUENSCHTE_PYTHON${RESET}"
 for name in "${ZUSATZ_NAMEN[@]}"; do
-    echo -e "  ${ROT}•  $name  (zusaetzlich)${RESET}"
+    echo -e "  ${ROT}•  $name  (additional)${RESET}"
 done
 
 echo ""
-read -rp "  Diese Programme jetzt installieren? (J/N): " antwort
+read -rp "  Install these programs now? (Y/N): " antwort
 echo ""
 
-if [[ ! "$antwort" =~ ^[jJyY]$ ]]; then
-    echo -e "  ${GELB}Installation abgebrochen.${RESET}"
+if [[ ! "$antwort" =~ ^[yY]$ ]]; then
+    echo -e "  ${GELB}Installation cancelled.${RESET}"
     echo ""
     exit 0
 fi
 
-# ─── Sudo-Check ─────────────────────────────────────────────────────────────
+# ─── Sudo check ──────────────────────────────────────────────────────────────
 
 if ! sudo -v 2>/dev/null; then
-    echo -e "  ${ROT}FEHLER: sudo-Berechtigungen erforderlich.${RESET}"
+    echo -e "  ${ROT}ERROR: sudo privileges required.${RESET}"
     exit 1
 fi
 
-# ─── Installationsfunktionen ─────────────────────────────────────────────────
+# ─── Install functions ───────────────────────────────────────────────────────
 
 installiere_chrome() {
     local tmp; tmp=$(mktemp -d)
-    echo -e "  ${CYAN}  Lade Google Chrome herunter ...${RESET}"
+    echo -e "  ${CYAN}  Downloading Google Chrome ...${RESET}"
     if command -v wget &>/dev/null; then
         wget -q "https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb" \
              -O "${tmp}/chrome.deb" || return 1
@@ -317,7 +317,7 @@ installiere_chrome() {
         curl -sL "https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb" \
              -o "${tmp}/chrome.deb" || return 1
     else
-        echo -e "  ${ROT}  wget/curl nicht gefunden.${RESET}"
+        echo -e "  ${ROT}  wget/curl not found.${RESET}"
         return 1
     fi
     sudo dpkg -i "${tmp}/chrome.deb" 2>/dev/null || true
@@ -327,7 +327,7 @@ installiere_chrome() {
 }
 
 installiere_brave() {
-    echo -e "  ${CYAN}  Fuege Brave-Repository hinzu ...${RESET}"
+    echo -e "  ${CYAN}  Adding the Brave repository ...${RESET}"
     sudo curl -fsSLo /usr/share/keyrings/brave-browser-archive-keyring.gpg \
         https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg || return 1
     echo "deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg arch=amd64] \
@@ -338,7 +338,7 @@ https://brave-browser-apt-release.s3.brave.com/ stable main" \
 }
 
 installiere_vscode() {
-    echo -e "  ${CYAN}  Lade Microsoft-Repository ...${RESET}"
+    echo -e "  ${CYAN}  Downloading the Microsoft repository ...${RESET}"
     wget -qO- https://packages.microsoft.com/keys/microsoft.asc \
         | gpg --dearmor > /tmp/microsoft_vscode.gpg 2>/dev/null || return 1
     sudo install -D -o root -g root -m 644 /tmp/microsoft_vscode.gpg \
@@ -352,7 +352,7 @@ https://packages.microsoft.com/repos/code stable main" \
 
 installiere_python() {
     local ver="$1"
-    echo -e "  ${CYAN}  Fuege deadsnakes-PPA hinzu ...${RESET}"
+    echo -e "  ${CYAN}  Adding the deadsnakes PPA ...${RESET}"
     if ! command -v add-apt-repository &>/dev/null; then
         sudo apt-get install -y -qq software-properties-common
     fi
@@ -362,14 +362,14 @@ installiere_python() {
     sudo apt-get install -y -qq "python${ver}"
 }
 
-# ─── Paketliste aktualisieren ───────────────────────────────────────────────
+# ─── Update package lists ───────────────────────────────────────────────────
 
-abschnitt "Installation laeuft"
+abschnitt "Installation Running"
 echo ""
-echo -e "  ${CYAN}Aktualisiere Paketlisten ...${RESET}"
+echo -e "  ${CYAN}Updating package lists ...${RESET}"
 sudo apt-get update -qq
 
-# ─── Installation ───────────────────────────────────────────────────────────
+# ─── Installation ────────────────────────────────────────────────────────────
 
 ERFOLG=()
 FEHLER=()
@@ -380,7 +380,7 @@ for i in "${!AUSGEWAEHLT_NAMEN[@]}"; do
     sonder="${AUSGEWAEHLT_SONDER[$i]}"
 
     echo ""
-    echo -e "  ${CYAN}Installiere ${name} ...${RESET}"
+    echo -e "  ${CYAN}Installing ${name} ...${RESET}"
 
     ok=false
     case "$sonder" in
@@ -399,22 +399,22 @@ for i in "${!AUSGEWAEHLT_NAMEN[@]}"; do
     esac
 
     if $ok; then
-        echo -e "  [✅] ${name} erfolgreich installiert"
+        echo -e "  [✅] ${name} installed successfully"
         ERFOLG+=("$name")
     else
-        echo -e "  ${ROT}[❌] ${name} fehlgeschlagen${RESET}"
+        echo -e "  ${ROT}[❌] ${name} failed${RESET}"
         FEHLER+=("$name")
     fi
 done
 
 if [[ -n "$GEWUENSCHTE_PYTHON" ]]; then
     echo ""
-    echo -e "  ${CYAN}Installiere Python ${GEWUENSCHTE_PYTHON} ...${RESET}"
+    echo -e "  ${CYAN}Installing Python ${GEWUENSCHTE_PYTHON} ...${RESET}"
     if installiere_python "$GEWUENSCHTE_PYTHON"; then
-        echo -e "  [✅] Python ${GEWUENSCHTE_PYTHON} erfolgreich installiert"
+        echo -e "  [✅] Python ${GEWUENSCHTE_PYTHON} installed successfully"
         ERFOLG+=("Python $GEWUENSCHTE_PYTHON")
     else
-        echo -e "  ${ROT}[❌] Python ${GEWUENSCHTE_PYTHON} fehlgeschlagen${RESET}"
+        echo -e "  ${ROT}[❌] Python ${GEWUENSCHTE_PYTHON} failed${RESET}"
         FEHLER+=("Python $GEWUENSCHTE_PYTHON")
     fi
 fi
@@ -424,24 +424,24 @@ for i in "${!ZUSATZ_NAMEN[@]}"; do
     paket="${ZUSATZ_PAKETE[$i]}"
 
     echo ""
-    echo -e "  ${CYAN}Installiere ${name} ...${RESET}"
+    echo -e "  ${CYAN}Installing ${name} ...${RESET}"
 
     if sudo apt-get install -y -qq "$paket" 2>/dev/null; then
-        echo -e "  [✅] ${name} erfolgreich installiert"
+        echo -e "  [✅] ${name} installed successfully"
         ERFOLG+=("$name")
     else
-        echo -e "  ${ROT}[❌] ${name} fehlgeschlagen${RESET}"
+        echo -e "  ${ROT}[❌] ${name} failed${RESET}"
         FEHLER+=("$name")
     fi
 done
 
-# ─── Abschlussbericht ───────────────────────────────────────────────────────
+# ─── Final report ────────────────────────────────────────────────────────────
 
-abschnitt "Abschlussbericht"
+abschnitt "Final Report"
 echo ""
 
 if [[ ${#ERFOLG[@]} -gt 0 ]]; then
-    echo -e "  ${GRUEN}Erfolgreich installiert:${RESET}"
+    echo -e "  ${GRUEN}Installed successfully:${RESET}"
     for n in "${ERFOLG[@]}"; do
         echo -e "    ${GRUEN}[✅] $n${RESET}"
     done
@@ -449,17 +449,17 @@ if [[ ${#ERFOLG[@]} -gt 0 ]]; then
 fi
 
 if [[ ${#FEHLER[@]} -gt 0 ]]; then
-    echo -e "  ${ROT}Fehlgeschlagen:${RESET}"
+    echo -e "  ${ROT}Failed:${RESET}"
     for n in "${FEHLER[@]}"; do
         echo -e "    ${ROT}[❌] $n${RESET}"
     done
     echo ""
-    echo -e "  ${GELB}Tipp: Internetverbindung und sudo-Rechte pruefen.${RESET}"
+    echo -e "  ${GELB}Tip: check your internet connection and sudo privileges.${RESET}"
     echo ""
 fi
 
 if [[ ${#FEHLER[@]} -eq 0 ]]; then
-    echo -e "  ${GRUEN}Alle Installationen erfolgreich abgeschlossen!${RESET}"
+    echo -e "  ${GRUEN}All installations completed successfully!${RESET}"
 fi
 
 echo ""
