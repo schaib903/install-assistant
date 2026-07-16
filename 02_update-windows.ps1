@@ -4,18 +4,25 @@
 # upgrade), not every winget package installed on the machine.
 # Can be run manually or register itself as a weekly task in the Windows
 # Task Scheduler (-Register), which then runs unattended via -Silent.
-# -Unregister removes the task again.
+# -Register copies this file to a stable per-user location first (see
+# $StabilesSkript below), so the scheduled task keeps working even if the
+# cloned repo folder it was originally run from gets deleted or moved.
+# -Status shows whether the weekly task is registered and its last/next run.
+# -Unregister removes the task and the stable copy again.
 
 param(
     [switch]$Silent,
     [switch]$Register,
-    [switch]$Unregister
+    [switch]$Unregister,
+    [switch]$Status
 )
 
 $ProgressPreference    = "SilentlyContinue"
 $ErrorActionPreference = "Continue"
 
-$AufgabenName = "install-assistant - Weekly Program Update"
+$AufgabenName   = "install-assistant - Weekly Program Update"
+$StabileAblage  = Join-Path $env:LOCALAPPDATA "install-assistant"
+$StabilesSkript = Join-Path $StabileAblage "02_update-windows.ps1"
 
 # ─── Helper functions ───────────────────────────────────────────────────────
 
@@ -51,8 +58,18 @@ function Winget-Aktualisiere([string]$ID) {
 }
 
 function Registriere-Aufgabe {
+    try {
+        New-Item -ItemType Directory -Path $StabileAblage -Force -ErrorAction Stop | Out-Null
+        if ($PSCommandPath -ne $StabilesSkript) {
+            Copy-Item -Path $PSCommandPath -Destination $StabilesSkript -Force -ErrorAction Stop
+        }
+    } catch {
+        Write-Host "  [!!] Could not copy the script to $StabileAblage`: $($_.Exception.Message)" -ForegroundColor Red
+        return $false
+    }
+
     $aktion    = New-ScheduledTaskAction -Execute "powershell.exe" `
-        -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$PSCommandPath`" -Silent"
+        -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$StabilesSkript`" -Silent"
     $trigger   = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At 9am
     $settings  = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
     $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive -RunLevel Highest
@@ -82,6 +99,34 @@ if ($Unregister) {
     } else {
         Write-Host "  No weekly task found." -ForegroundColor Yellow
     }
+    if (Test-Path $StabilesSkript) {
+        Remove-Item -Path $StabilesSkript -Force -ErrorAction SilentlyContinue
+        Write-Host "  [OK] Removed the stable copy at $StabilesSkript" -ForegroundColor Green
+    }
+    exit 0
+}
+
+if ($Status) {
+    $task = Get-ScheduledTask -TaskName $AufgabenName -ErrorAction SilentlyContinue
+    if (-not $task) {
+        Write-Host "  No weekly task registered." -ForegroundColor Yellow
+        Write-Host "  Set one up with: .\02_update-windows.ps1 -Register" -ForegroundColor DarkGray
+        exit 0
+    }
+
+    $info       = $task | Get-ScheduledTaskInfo
+    $argumente  = $task.Actions | Select-Object -First 1 -ExpandProperty Arguments
+    $skriptPfad = $null
+    if ($argumente -match '-File\s+"([^"]+)"') { $skriptPfad = $Matches[1] }
+
+    Write-Host "  [OK] Weekly task is registered: $AufgabenName" -ForegroundColor Green
+    Write-Host "       State:       $($task.State)"
+    Write-Host "       Script path: $skriptPfad"
+    if ($skriptPfad -and -not (Test-Path $skriptPfad)) {
+        Write-Host "       [!!] This file no longer exists - the task will fail silently until it's restored or removed with -Unregister." -ForegroundColor Red
+    }
+    Write-Host "       Last run:    $($info.LastRunTime)  (result code: $($info.LastTaskResult))"
+    Write-Host "       Next run:    $($info.NextRunTime)"
     exit 0
 }
 
@@ -96,6 +141,7 @@ if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
 if ($Register) {
     if (Registriere-Aufgabe) {
         Write-Host "  [OK] Weekly task set up (every Monday, 9:00 AM)." -ForegroundColor Green
+        Write-Host "       Running from a stable copy at: $StabilesSkript" -ForegroundColor DarkGray
     }
     exit 0
 }
@@ -206,6 +252,7 @@ if (-not $Silent) {
     if (Get-ScheduledTask -TaskName $AufgabenName -ErrorAction SilentlyContinue) {
         Write-Host ""
         Write-Host "  Note: weekly automatic execution is already set up." -ForegroundColor DarkGray
+        Write-Host "        Check it with:  .\02_update-windows.ps1 -Status" -ForegroundColor DarkGray
         Write-Host "        Remove it with: .\02_update-windows.ps1 -Unregister" -ForegroundColor DarkGray
     } else {
         Write-Host ""
@@ -213,6 +260,7 @@ if (-not $Silent) {
         if ($antwort -match "^[yY]$") {
             if (Registriere-Aufgabe) {
                 Write-Host "  [OK] Weekly task set up (every Monday, 9:00 AM)." -ForegroundColor Green
+                Write-Host "       Running from a stable copy at: $StabilesSkript" -ForegroundColor DarkGray
                 Write-Host "       Remove it with: .\02_update-windows.ps1 -Unregister" -ForegroundColor DarkGray
             }
         }

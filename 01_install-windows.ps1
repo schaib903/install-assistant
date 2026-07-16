@@ -1,6 +1,10 @@
 #Requires -Version 5.1
 # Freeware Install Assistant - Windows
 # Requires: winget (Windows Package Manager)
+# Self-elevates once at startup (single UAC prompt) so individual package
+# installs that need Administrator rights don't each trigger their own
+# confirmation dialog. If elevation is declined, the script continues
+# without it - some installs may then show extra prompts of their own.
 
 $ProgressPreference    = "SilentlyContinue"
 $ErrorActionPreference = "Continue"
@@ -44,6 +48,21 @@ if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
+$IstElevated = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if (-not $IstElevated) {
+    Write-Host ""
+    Write-Host "  Requesting Administrator rights (one prompt) so installs don't each ask separately ..." -ForegroundColor Cyan
+    try {
+        Start-Process -FilePath "powershell.exe" `
+            -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" `
+            -Verb RunAs -ErrorAction Stop
+        exit 0
+    } catch {
+        Write-Host "  [!!] Elevation was cancelled or failed - continuing without Administrator rights." -ForegroundColor Yellow
+        Write-Host "       Some installs may show additional confirmation prompts." -ForegroundColor Yellow
+    }
+}
+
 # ─── Header ──────────────────────────────────────────────────────────────────
 
 Clear-Host
@@ -73,10 +92,17 @@ try {
 
 # ─── Programs ────────────────────────────────────────────────────────────────
 
+# Firefox's default winget package (Mozilla.Firefox) is hardcoded to the
+# en-US build; Mozilla publishes separate per-locale IDs (e.g.
+# Mozilla.Firefox.de) instead of a runtime language switch. Every other
+# catalog entry uses a language-neutral/MUI installer that already follows
+# the Windows display language automatically, so only Firefox needs this.
+$FirefoxID = if ((Get-UICulture).TwoLetterISOLanguageName -eq "de") { "Mozilla.Firefox.de" } else { "Mozilla.Firefox" }
+
 $Programme = @(
     @{
         Name  = "Firefox"
-        ID    = "Mozilla.Firefox"
+        ID    = $FirefoxID
         Pfade = @(
             "$env:ProgramFiles\Mozilla Firefox\firefox.exe",
             "${env:ProgramFiles(x86)}\Mozilla Firefox\firefox.exe"

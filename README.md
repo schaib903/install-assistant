@@ -50,11 +50,14 @@ At the end of a manual run, the script asks (if not already set up) whether it s
 
 ```powershell
 .\02_update-windows.ps1 -Register     # sets up the weekly task without asking
+.\02_update-windows.ps1 -Status       # shows whether the task is registered, and its last/next run
 .\02_update-windows.ps1 -Unregister   # removes the scheduled task again
 .\02_update-windows.ps1 -Silent       # unattended run without prompts (used by the scheduled task)
 ```
 
 > **Note:** For reliable unattended updates of programs that require elevation, the scheduled task runs with the highest privileges. Setting up the task (`-Register` or the prompt at the end) therefore only works reliably if PowerShell was started as Administrator for that step.
+
+> **Note on the stable copy:** `-Register` copies `02_update-windows.ps1` to `%LOCALAPPDATA%\install-assistant\02_update-windows.ps1` and points the scheduled task at that copy, not at the script's original location. That means you can safely delete or move the cloned repo folder afterward without breaking the weekly task. Re-running `-Register` (e.g. after pulling an updated version of this script) refreshes the copy. Running `-Unregister` removes both the scheduled task and the stable copy; `-Status` shows exactly which path the task is currently pointing at.
 
 > **Note:** If PowerShell refuses to run with an execution policy error, see [Execution Policy](#prerequisites) under Prerequisites.
 
@@ -97,7 +100,7 @@ A fresh Windows install doesn't have Git yet, so the repo can't be cloned there.
 
 | Program | Windows | Linux |
 |---|---|---|
-| Firefox | ✅ | ✅ |
+| Firefox | ✅ (language auto-matched, see below) | ✅ |
 | Google Chrome | ✅ | ✅ |
 | Brave Browser | ✅ | ✅ (own apt repo) |
 | Notepad++ | ✅ | ❌ (Windows only) |
@@ -107,6 +110,8 @@ A fresh Windows install doesn't have Git yet, so the repo can't be cloned there.
 | VS Code | ✅ | ✅ (Microsoft repo) |
 | Git | ✅ | ✅ |
 | Python 3.10–3.13 | ✅ | ✅ (deadsnakes PPA) |
+
+> **Note on language:** all Windows packages except Firefox are language-neutral and automatically follow your Windows display language. Firefox's winget package is hardcoded to English (en-US); `01_install-windows.ps1` detects a German Windows display language and installs the separate German build (`Mozilla.Firefox.de`) instead — no configuration needed.
 
 ---
 
@@ -146,7 +151,7 @@ Open a terminal (PowerShell) as a normal user and run:
 .\01_install-windows.ps1
 ```
 
-> **Tip:** For system-wide installations, start the terminal as Administrator.
+> **Note:** The script requests Administrator rights itself at startup (a single UAC prompt) so that individual program installs don't each pop up their own confirmation dialog. If you decline the prompt, the script continues without elevation, and some installs may then show extra prompts of their own.
 
 ### Linux
 
